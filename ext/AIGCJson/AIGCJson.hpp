@@ -24,9 +24,8 @@
 #include <string>
 #include <iostream>
 
-#include "rapidjson/document.h"
-#include "rapidjson/writer.h"
-#include "rapidjson/stringbuffer.h"
+#include "nlohmann/json.hpp"
+using json = nlohmann::json;
 
 namespace aigc
 {
@@ -48,7 +47,7 @@ namespace aigc
 #define AIGC_JSON_HELPER(...)                                                            \
     std::map<std::string, std::string> __aigcDefaultValues;                              \
     bool AIGCJsonToObject(aigc::JsonHelperPrivate &handle,                               \
-                          rapidjson::Value &jsonValue,                                   \
+                          json& j,                                                       \
                           std::vector<std::string> &names)                               \
     {                                                                                    \
         std::vector<std::string> standardNames = handle.GetMembersNames(#__VA_ARGS__);   \
@@ -57,11 +56,10 @@ namespace aigc
             for (int i = names.size(); i < (int)standardNames.size(); i++)               \
                 names.push_back(standardNames[i]);                                       \
         }                                                                                \
-        return handle.SetMembers(names, 0, jsonValue, __aigcDefaultValues, __VA_ARGS__); \
+        return handle.SetMembers(names, 0, j, __aigcDefaultValues, __VA_ARGS__);         \
     }                                                                                    \
     bool AIGCObjectToJson(aigc::JsonHelperPrivate &handle,                               \
-                          rapidjson::Value &jsonValue,                                   \
-                          rapidjson::Document::AllocatorType &allocator,                 \
+                          json& j,                                                       \
                           std::vector<std::string> &names)                               \
     {                                                                                    \
         std::vector<std::string> standardNames = handle.GetMembersNames(#__VA_ARGS__);   \
@@ -70,7 +68,7 @@ namespace aigc
             for (int i = names.size(); i < (int)standardNames.size(); i++)               \
                 names.push_back(standardNames[i]);                                       \
         }                                                                                \
-        return handle.GetMembers(names, 0, jsonValue, allocator, __VA_ARGS__);           \
+        return handle.GetMembers(names, 0, j, __VA_ARGS__);                              \
     }
 
 /******************************************************
@@ -107,16 +105,13 @@ namespace aigc
  * };         
  ******************************************************/
 #define AIGC_JSON_HELPER_BASE(...)                                           \
-    bool AIGCBaseJsonToObject(aigc::JsonHelperPrivate &handle,               \
-                              rapidjson::Value &jsonValue)                   \
+    bool AIGCBaseJsonToObject(aigc::JsonHelperPrivate &handle, json& j)      \
     {                                                                        \
-        return handle.SetBase(jsonValue, __VA_ARGS__);                       \
+        return handle.SetBase(j, __VA_ARGS__);                               \
     }                                                                        \
-    bool AIGCBaseObjectToJson(aigc::JsonHelperPrivate &handle,               \
-                              rapidjson::Value &jsonValue,                   \
-                              rapidjson::Document::AllocatorType &allocator) \
+    bool AIGCBaseObjectToJson(aigc::JsonHelperPrivate &handle, json& j)      \
     {                                                                        \
-        return handle.GetBase(jsonValue, allocator, __VA_ARGS__);            \
+        return handle.GetBase(j, __VA_ARGS__);                               \
     }
 
 /******************************************************
@@ -216,23 +211,23 @@ public:
          ******************************************************/
     // 反序列化
     template <typename T, typename enable_if<HasConverFunction<T>::has, int>::type = 0>
-    bool JsonToObject(T &obj, rapidjson::Value &jsonValue)
+    bool JsonToObject(T &obj, json& j)
     {
-        if (!BaseConverJsonToObject(obj, jsonValue))
+        if (!BaseConverJsonToObject(obj, j))
             return false;
 
         LoadDefaultValuesMap(obj);
         std::vector<std::string> names = LoadRenameArray(obj);
-        return obj.AIGCJsonToObject(*this, jsonValue, names);
+        return obj.AIGCJsonToObject(*this, j, names);
     }
 
     template <typename T, typename enable_if<!HasConverFunction<T>::has, int>::type = 0>
-    bool JsonToObject(T &obj, rapidjson::Value &jsonValue)
+    bool JsonToObject(T &obj, json& j)
     {
         if (std::is_enum<T>::value)
         {
             int ivalue;
-            if (!JsonToObject(ivalue, jsonValue))
+            if (!JsonToObject(ivalue, j))
                 return false;
 
             obj = static_cast<T>(ivalue);
@@ -245,30 +240,31 @@ public:
 
     // 序列化
     template <typename T, typename enable_if<HasConverFunction<T>::has, int>::type = 0>
-    bool ObjectToJson(T &obj, rapidjson::Value &jsonValue, 
-        rapidjson::Document::AllocatorType &allocator)
+    bool ObjectToJson(T &obj, json& j)
     {
-        if (jsonValue.IsNull())
-            jsonValue.SetObject();
+        if (j.is_null())
+        {
+            j = json();
+        }
 
         // 基类序列化
-        if (!BaseConverObjectToJson(obj, jsonValue, allocator))
+        if (!BaseConverObjectToJson(obj, j))
             return false;
 
         std::vector<std::string> names = LoadRenameArray(obj);
         // 类对象obj的序列化
-        return obj.AIGCObjectToJson(*this, jsonValue, allocator, names);
+        return obj.AIGCObjectToJson(*this, j, names);
     }
 
     // 枚举类型的序列化进行单独处理
     // 先转为int，再进行序列化
     template <typename T, typename enable_if<!HasConverFunction<T>::has, int>::type = 0>
-    bool ObjectToJson(T &obj, rapidjson::Value &jsonValue, rapidjson::Document::AllocatorType &allocator)
+    bool ObjectToJson(T &obj, json& j)
     {
         if (std::is_enum<T>::value)
         {
             int ivalue = static_cast<int>(obj);
-            return ObjectToJson(ivalue, jsonValue, allocator);
+            return ObjectToJson(ivalue, j);
         }
 
         m_message = "unsupported this type.";
@@ -301,28 +297,28 @@ public:
     // 基类反序列化
     // 过滤HasBaseConverFunction的对象
     template <typename T, typename enable_if<HasBaseConverFunction<T>::has, int>::type = 0>
-    bool BaseConverJsonToObject(T &obj, rapidjson::Value &jsonValue)
+    bool BaseConverJsonToObject(T &obj, json& j)
     {
-        return obj.AIGCBaseJsonToObject(*this, jsonValue);
+        return obj.AIGCBaseJsonToObject(*this, j);
     }
 
     // 过滤!HasBaseConverFunction的对象,直接返回true
     template <typename T, typename enable_if<!HasBaseConverFunction<T>::has, int>::type = 0>
-    bool BaseConverJsonToObject(T &obj, rapidjson::Value &jsonValue)
+    bool BaseConverJsonToObject(T &obj, json& j)
     {
         return true;
     }
 
     // 基类序列化
     template <typename T, typename enable_if<HasBaseConverFunction<T>::has, int>::type = 0>
-    bool BaseConverObjectToJson(T &obj, rapidjson::Value &jsonValue, rapidjson::Document::AllocatorType &allocator)
+    bool BaseConverObjectToJson(T &obj, json& j)
     {
-        return obj.AIGCBaseObjectToJson(*this, jsonValue, allocator);
+        return obj.AIGCBaseObjectToJson(*this, j);
     }
 
     // 过滤!HasBaseConverFunction的对象,直接返回true
     template <typename T, typename enable_if<!HasBaseConverFunction<T>::has, int>::type = 0>
-    bool BaseConverObjectToJson(T &obj, rapidjson::Value &jsonValue, rapidjson::Document::AllocatorType &allocator)
+    bool BaseConverObjectToJson(T &obj, json& j)
     {
         return true;
     }
@@ -400,34 +396,21 @@ public:
     /**
          * Get json value type
          */
-    static std::string GetJsonValueTypeName(rapidjson::Value &jsonValue)
+    static std::string GetJsonValueTypeName(json& j)
     {
-        switch (jsonValue.GetType())
-        {
-        case rapidjson::Type::kArrayType:
-            return "array";
-        case rapidjson::Type::kFalseType:
-        case rapidjson::Type::kTrueType:
-            return "bool";
-        case rapidjson::Type::kObjectType:
-            return "object";
-        case rapidjson::Type::kStringType:
-            return "string";
-        case rapidjson::Type::kNumberType:
-            return "number";
-        default:
-            return "string";
-        }
+        return j.type_name();
     }
 
-    static std::string GetStringFromJsonValue(rapidjson::Value &jsonValue)
+    static std::string GetStringFromJsonValue(json& j)
     {
-        rapidjson::StringBuffer buffer;
-        rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+        //rapidjson::StringBuffer buffer;
+        //rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
 
-        jsonValue.Accept(writer);
-        std::string ret = std::string(buffer.GetString());
-        return ret;
+        //jsonValue.Accept(writer);
+        //std::string ret = std::string(buffer.GetString());
+        //return ret;
+
+        return j.dump();
     }
 
     static std::string FindStringFromMap(std::string name, 
@@ -473,31 +456,32 @@ public:
 
     template <typename TYPE, typename... TYPES>
     bool SetMembers(const std::vector<std::string> &names, int index, 
-        rapidjson::Value &jsonValue, std::map<std::string, std::string> defaultValues, 
+        json &j, std::map<std::string, std::string> defaultValues, 
         TYPE &arg, TYPES &...args)
     {
-        if (!SetMembers(names, index, jsonValue, defaultValues, arg))
+        if (!SetMembers(names, index, j, defaultValues, arg))
             return false;
 
         // 递归调用自己
-        return SetMembers(names, ++index, jsonValue, defaultValues, args...);
+        return SetMembers(names, ++index, j, defaultValues, args...);
     }
 
     template <typename TYPE>
     bool SetMembers(const std::vector<std::string> &names, int index,
-        rapidjson::Value &jsonValue, std::map<std::string, std::string> defaultValues, TYPE &arg)
+       json& j, std::map<std::string, std::string> defaultValues, TYPE &arg)
     {
-        if (jsonValue.IsNull())
+        if (j.is_null())
             return true;
 
         const char *key = names[index].c_str();
-        if (!jsonValue.IsObject())
+        if (!j.is_object())
             return false;
 
         // 提前判断是否有某个key
         // 1、防止直接解析导致崩溃
         // 2、可以读取默认值
-        if (!jsonValue.HasMember(key))
+        auto it = j.find(key);
+        if (it == j.end())
         {
             std::string defaultV = FindStringFromMap(names[index], defaultValues);
             if (!defaultV.empty())
@@ -506,7 +490,7 @@ public:
         }
 
         // 基于arg的具体类型，调用相应的JsonToObject，实现具体参数的反序列化
-        if (!JsonToObject(arg, jsonValue[key]))
+        if (!JsonToObject(arg, *it))
         {
             m_message = "[" + names[index] + "] " + m_message;
             return false;
@@ -521,39 +505,37 @@ public:
         ******************************************************/
     template <typename TYPE, typename... TYPES>
     bool GetMembers(const std::vector<std::string> &names, int index, 
-        rapidjson::Value &jsonValue, rapidjson::Document::AllocatorType &allocator, 
-        TYPE &arg, TYPES &...args)
+        json &j, TYPE &arg, TYPES &...args)
     {
         // index对应的字段参数的序列化
-        if (!GetMembers(names, index, jsonValue, allocator, arg))
+        if (!GetMembers(names, index, j, arg))
             return false;
 
         // 递归调用自己
-        return GetMembers(names, ++index, jsonValue, allocator, args...);
+        return GetMembers(names, ++index, j, args...);
     }
 
     template <typename TYPE>
     bool GetMembers(const std::vector<std::string> &names, int index,
-        rapidjson::Value &jsonValue, rapidjson::Document::AllocatorType &allocator,
-        TYPE &arg)
+        json &j, TYPE &arg)
     {
-        rapidjson::Value item;
+        json jv;
         // 基于arg的具体类型，调用相应的ObjectToJson，实现具体参数的序列化
-        bool check = ObjectToJson(arg, item, allocator);
+        bool check = ObjectToJson(arg, jv);
         if (!check)
         {
             m_message = "[" + names[index] + "] " + m_message;
             return false;
         }
 
-        if (jsonValue.HasMember(names[index].c_str()))
+        auto it = j.find(names[index]);
+        if (it != j.end())
         {
-            jsonValue.RemoveMember(names[index].c_str());
+            auto next = it + 1;
+            j.erase(it, next);
         }
 
-        rapidjson::Value key;
-        key.SetString(names[index].c_str(), names[index].length(), allocator);
-        jsonValue.AddMember(key, item, allocator);
+        j[names[index]] = jv;
         return true;
     }
 
@@ -565,17 +547,17 @@ public:
         ******************************************************/
     // 基类反序列化
     template <typename TYPE, typename... TYPES>
-    bool SetBase(rapidjson::Value &jsonValue, TYPE *arg, TYPES *...args)
+    bool SetBase(json& j, TYPE *arg, TYPES *...args)
     {
-        if (!SetBase(jsonValue, arg))
+        if (!SetBase(j, arg))
             return false;
-        return SetBase(jsonValue, args...);
+        return SetBase(j, args...);
     }
 
     template <typename TYPE>
-    bool SetBase(rapidjson::Value &jsonValue, TYPE *arg)
+    bool SetBase(json& j, TYPE *arg)
     {
-        return JsonToObject(*arg, jsonValue);
+        return JsonToObject(*arg, j);
     }
 
     /******************************************************
@@ -585,17 +567,17 @@ public:
         ******************************************************/
     // 基类序列化
     template <typename TYPE, typename... TYPES>
-    bool GetBase(rapidjson::Value &jsonValue, rapidjson::Document::AllocatorType &allocator, TYPE *arg, TYPES *...args)
+    bool GetBase(json& j, TYPE *arg, TYPES *...args)
     {
-        if (!GetBase(jsonValue, allocator, arg))
+        if (!GetBase(j, arg))
             return false;
-        return GetBase(jsonValue, allocator, args...);
+        return GetBase(j, args...);
     }
 
     template <typename TYPE>
-    bool GetBase(rapidjson::Value &jsonValue, rapidjson::Document::AllocatorType &allocator, TYPE *arg)
+    bool GetBase(json& j, TYPE *arg)
     {
-        return ObjectToJson(*arg, jsonValue, allocator);
+        return ObjectToJson(*arg, j);
     }
 
 public:
@@ -661,164 +643,166 @@ public:
          *          double、string、vector、list、map<string,XX>
          *
          ******************************************************/
-    bool JsonToObject(int &obj, rapidjson::Value &jsonValue)
+    bool JsonToObject(int &obj, json& j)
     {
-        if (!jsonValue.IsInt())
+        if (!j.is_number_integer())
         {
-            m_message = "json-value is " + GetJsonValueTypeName(jsonValue) + " but object is int.";
+            
+            m_message = "json-value is " + std::string(j.type_name()) + " but object is int.";
             return false;
         }
-        obj = jsonValue.GetInt();
+        obj = j.get<int>();
         return true;
     }
 
-    bool JsonToObject(unsigned int &obj, rapidjson::Value &jsonValue)
+    bool JsonToObject(unsigned int &obj, json& j)
     {
-        if (!jsonValue.IsUint())
+        if (!j.is_number_unsigned())
         {
-            m_message = "json-value is " + GetJsonValueTypeName(jsonValue) + " but object is unsigned int.";
+            m_message = "json-value is " + std::string(j.type_name()) + " but object is unsigned int.";
             return false;
         }
-        obj = jsonValue.GetUint();
+        obj = j.get<unsigned int>();
         return true;
     }
 
-    bool JsonToObject(int64_t &obj, rapidjson::Value &jsonValue)
+    bool JsonToObject(int64_t &obj, json& j)
     {
-        if (!jsonValue.IsInt64())
+        if (!j.is_number_integer())
         {
-            m_message = "json-value is " + GetJsonValueTypeName(jsonValue) + " but object is int64_t.";
+            m_message = "json-value is " + std::string(j.type_name()) + " but object is int64_t.";
             return false;
         }
-        obj = jsonValue.GetInt64();
+        obj = j.get<int64_t>();
         return true;
     }
 
-    bool JsonToObject(uint64_t &obj, rapidjson::Value &jsonValue)
+    bool JsonToObject(uint64_t &obj, json& j)
     {
-        if (!jsonValue.IsUint64())
+        if (!j.is_number_unsigned())
         {
-            m_message = "json-value is " + GetJsonValueTypeName(jsonValue) + " but object is uint64_t.";
+            m_message = "json-value is " + std::string(j.type_name()) + " but object is uint64_t.";
             return false;
         }
-        obj = jsonValue.GetUint64();
+        obj = j.get<uint64_t>();
         return true;
     }
 
-    bool JsonToObject(bool &obj, rapidjson::Value &jsonValue)
+    bool JsonToObject(bool &obj, json& j)
     {
-        if (!jsonValue.IsBool())
+        if (!j.is_boolean())
         {
-            m_message = "json-value is " + GetJsonValueTypeName(jsonValue) + " but object is bool.";
+            m_message = "json-value is " + std::string(j.type_name()) + " but object is bool.";
             return false;
         }
-        obj = jsonValue.GetBool();
+        obj = j.get<bool>();
         return true;
     }
 
-    bool JsonToObject(float &obj, rapidjson::Value &jsonValue)
+    bool JsonToObject(float &obj, json& j)
     {
-        if (!jsonValue.IsNumber())
+        if (!j.is_number_float())
         {
-            m_message = "json-value is " + GetJsonValueTypeName(jsonValue) + " but object is float.";
+            m_message = "json-value is " + std::string(j.type_name()) + " but object is float.";
             return false;
         }
-        obj = jsonValue.GetFloat();
+        obj = j.get<float>();
         return true;
     }
 
-    bool JsonToObject(double &obj, rapidjson::Value &jsonValue)
+    bool JsonToObject(double &obj, json& j)
     {
-        if (!jsonValue.IsNumber())
+        if (!j.is_number_float())
         {
-            m_message = "json-value is " + GetJsonValueTypeName(jsonValue) + " but object is double.";
+            m_message = "json-value is " + std::string(j.type_name()) + " but object is double.";
             return false;
         }
-        obj = jsonValue.GetDouble();
+        obj = j.get<double>();
         return true;
     }
 
-    bool JsonToObject(std::string &obj, rapidjson::Value &jsonValue)
+    bool JsonToObject(std::string &obj, json& j)
     {
         obj = "";
-        if (jsonValue.IsNull())
+        if (j.is_null())
             return true;
         //object or number conver to string
-        else if (jsonValue.IsObject() || jsonValue.IsNumber())
-            obj = GetStringFromJsonValue(jsonValue);
-        else if (!jsonValue.IsString())
+        else if (j.is_object() || j.is_number())
+            obj = GetStringFromJsonValue(j);
+        else if (!j.is_string())
         {
-            m_message = "json-value is " + GetJsonValueTypeName(jsonValue) + " but object is string.";
+            m_message = "json-value is " + std::string(j.type_name()) + " but object is string.";
             return false;
         }
         else
-            obj = jsonValue.GetString();
+            obj = j.get<std::string>();
 
         return true;
     }
 
     template <typename TYPE>
-    bool JsonToObject(std::vector<TYPE> &obj, rapidjson::Value &jsonValue)
+    bool JsonToObject(std::vector<TYPE> &obj, json& j)
     {
         obj.clear();
-        if (!jsonValue.IsArray())
+        if (!j.is_array())
         {
-            m_message = "json-value is " + GetJsonValueTypeName(jsonValue) + " but object is std::vector<TYPE>.";
+            m_message = "json-value is " + std::string(j.type_name()) + " but object is std::vector<TYPE>.";
             return false;
         }
 
-        auto array = jsonValue.GetArray();
-        for (int i = 0; i < array.Size(); i++)
+        for (auto it = j.begin(); it != j.end(); ++it)
         {
             TYPE item;
-            if (!JsonToObject(item, array[i]))
+            if (!JsonToObject(item, *it))
+            {
                 return false;
+            }
             obj.push_back(item);
         }
         return true;
     }
 
     template <typename TYPE>
-    bool JsonToObject(std::list<TYPE> &obj, rapidjson::Value &jsonValue)
+    bool JsonToObject(std::list<TYPE> &obj, json& j)
     {
         obj.clear();
-        if (!jsonValue.IsArray())
+        if (!j.is_array())
         {
-            m_message = "json-value is " + GetJsonValueTypeName(jsonValue) + " but object is std::list<TYPE>.";
+            m_message = "json-value is " + std::string(j.type_name()) + " but object is std::list<TYPE>.";
             return false;
         }
 
-        auto array = jsonValue.GetArray();
-        for (int i = 0; i < array.Size(); i++)
+        for (auto it = j.begin(); it != j.end(); ++it)
         {
             TYPE item;
-            if (!JsonToObject(item, array[i]))
+            if (!JsonToObject(item, *it))
+            {
                 return false;
+            }
             obj.push_back(item);
         }
         return true;
     }
 
     template <typename TYPE>
-    bool JsonToObject(std::map<std::string, TYPE> &obj, rapidjson::Value &jsonValue)
+    bool JsonToObject(std::map<std::string, TYPE> &obj, json& j)
     {
         obj.clear();
-        if (!jsonValue.IsObject())
+        if (!j.is_object())
         {
-            m_message = "json-value is " + GetJsonValueTypeName(jsonValue) + " but object is std::map<std::string, TYPE>.";
+            m_message = "json-value is " + std::string(j.type_name()) + " but object is std::map<std::string, TYPE>.";
             return false;
         }
 
-        for (auto iter = jsonValue.MemberBegin(); iter != jsonValue.MemberEnd(); ++iter)
+        for (const auto& it=j.cbegin(); it!=j.cend(); ++it)
         {
-            auto key = (iter->name).GetString();
-            auto &value = jsonValue[key];
-
             TYPE item;
-            if (!JsonToObject(item, value))
+            if (!JsonToObject(item, it.value()))
+            {
                 return false;
+            }
 
-            obj.insert(std::pair<std::string, TYPE>(key, item));
+            obj.insert(std::pair<std::string, TYPE>(it.key(), item));
         }
         return true;
     }
@@ -830,106 +814,100 @@ public:
          *          double、string、vector、list、map<string,XX>
          *
          ******************************************************/
-    bool ObjectToJson(int &obj, rapidjson::Value &jsonValue, rapidjson::Document::AllocatorType &allocator)
+    bool ObjectToJson(int &obj, json& j)
     {
-        jsonValue.SetInt(obj);
+        j = obj;
         return true;
     }
 
-    bool ObjectToJson(unsigned int &obj, rapidjson::Value &jsonValue, rapidjson::Document::AllocatorType &allocator)
+    bool ObjectToJson(unsigned int &obj, json& j)
     {
-        jsonValue.SetUint(obj);
+        j = obj;
         return true;
     }
 
-    bool ObjectToJson(int64_t &obj, rapidjson::Value &jsonValue, rapidjson::Document::AllocatorType &allocator)
+    bool ObjectToJson(int64_t &obj, json& j)
     {
-        jsonValue.SetInt64(obj);
+        j = obj;
         return true;
     }
 
-    bool ObjectToJson(uint64_t &obj, rapidjson::Value &jsonValue, rapidjson::Document::AllocatorType &allocator)
+    bool ObjectToJson(uint64_t &obj, json& j)
     {
-        jsonValue.SetUint64(obj);
+        j = obj;
         return true;
     }
 
-    bool ObjectToJson(bool &obj, rapidjson::Value &jsonValue, rapidjson::Document::AllocatorType &allocator)
+    bool ObjectToJson(bool &obj, json& j)
     {
-        jsonValue.SetBool(obj);
+        j = obj;
         return true;
     }
 
-    bool ObjectToJson(float &obj, rapidjson::Value &jsonValue, rapidjson::Document::AllocatorType &allocator)
+    bool ObjectToJson(float &obj, json& j)
     {
-        jsonValue.SetFloat(obj);
+        j = obj;
         return true;
     }
 
-    bool ObjectToJson(double &obj, rapidjson::Value &jsonValue, rapidjson::Document::AllocatorType &allocator)
+    bool ObjectToJson(double &obj, json& j)
     {
-        jsonValue.SetDouble(obj);
+        j = obj;
         return true;
     }
 
-    bool ObjectToJson(std::string &obj, rapidjson::Value &jsonValue, rapidjson::Document::AllocatorType &allocator)
+    bool ObjectToJson(std::string &obj, json& j)
     {
-        jsonValue.SetString(obj.c_str(), obj.length(), allocator);
-        return true;
-    }
-
-    template <typename TYPE>
-    bool ObjectToJson(std::vector<TYPE> &obj, rapidjson::Value &jsonValue, rapidjson::Document::AllocatorType &allocator)
-    {
-        rapidjson::Value array(rapidjson::Type::kArrayType);
-        for (int i = 0; i < obj.size(); i++)
-        {
-            rapidjson::Value item;
-            if (!ObjectToJson(obj[i], item, allocator))
-                return false;
-
-            array.PushBack(item, allocator);
-        }
-
-        jsonValue = array;
+        j = obj;
         return true;
     }
 
     template <typename TYPE>
-    bool ObjectToJson(std::list<TYPE> &obj, rapidjson::Value &jsonValue, rapidjson::Document::AllocatorType &allocator)
+    bool ObjectToJson(std::vector<TYPE> &obj, json& j)
     {
-        rapidjson::Value array(rapidjson::Type::kArrayType);
-        for (auto i = obj.begin(); i != obj.end(); i++)
+        for (const auto& v : obj)
         {
-            rapidjson::Value item;
-            if (!ObjectToJson(*i, item, allocator))
+            json jv;
+            if (!ObjectToJson(v, jv))
+            {
                 return false;
+            }
 
-            array.PushBack(item, allocator);
+            j.push_back(jv);
         }
-
-        jsonValue = array;
         return true;
     }
 
     template <typename TYPE>
-    bool ObjectToJson(std::map<std::string, TYPE> &obj, rapidjson::Value &jsonValue, rapidjson::Document::AllocatorType &allocator)
+    bool ObjectToJson(std::list<TYPE> &obj, json& j)
     {
-        jsonValue.SetObject();
-        for (auto iter = obj.begin(); iter != obj.end(); ++iter)
+        for (auto& v : obj)
         {
-            auto key = iter->first;
-            TYPE value = iter->second;
-
-            rapidjson::Value jsonitem;
-            if (!ObjectToJson(value, jsonitem, allocator))
+            json jv;
+            if (!ObjectToJson(v, jv))
+            {
                 return false;
+            }
 
-            rapidjson::Value jsonkey;
-            jsonkey.SetString(key.c_str(), key.length(), allocator);
-
-            jsonValue.AddMember(jsonkey, jsonitem, allocator);
+            j.push_back(jv);
         }
+        return true;
+    }
+
+    template <typename TYPE>
+    bool ObjectToJson(std::map<std::string, TYPE> &obj, json& j)
+    {
+        for (const auto& p : obj)
+        {
+            json jv;
+            if (!ObjectToJson(p.second, jv))
+            {
+                return false;
+            }
+
+            j[p.first] = jv;
+        }
+
         return true;
     }
 
@@ -950,10 +928,8 @@ public:
     template <typename T>
     static bool JsonToObject(T &obj, const std::string &jsonStr, const std::vector<std::string> keys = {}, std::string *message = NULL)
     {
-        //Parse json string
-        rapidjson::Document root;
-        root.Parse(jsonStr.c_str());
-        if (root.IsNull())
+        json j = json::parse(jsonStr);
+        if (j.is_null())
         {
             if (message)
                 *message = "Json string can't parse.";
@@ -963,26 +939,25 @@ public:
         // Go to the key-path
         // 当keys不为空时，表示只解析具体key-path的json
         std::string path;
-        rapidjson::Value &value = root;
         for (int i = 0; i < (int)keys.size(); i++)
         {
-            const char *find = keys[i].c_str();
             if (!path.empty())
                 path += "->";
             path += keys[i];
 
-            if (!value.IsObject() || !value.HasMember(find))
+            auto it = j.find(keys[i]);
+            if (!j.is_object() || it == j.end())
             {
                 if (message)
                     *message = "Can't parse the path [" + path + "].";
                 return false;
             }
-            value = value[find];
+            j = *it;
         }
 
         //Conver
         JsonHelperPrivate handle;
-        if (!handle.JsonToObject(obj, value))
+        if (!handle.JsonToObject(obj, j))
         {
             if (message)
                 *message = handle.m_message;
@@ -1017,20 +992,17 @@ public:
     template <typename T>
     static bool ObjectToJson(T &obj, std::string &jsonStr, std::string *message = NULL)
     {
-        rapidjson::Document root;
-        root.SetObject();
-        rapidjson::Document::AllocatorType &allocator = root.GetAllocator();
-
+        json j;
         //Conver
         JsonHelperPrivate handle;
-        if (!handle.ObjectToJson(obj, root, allocator))
+        if (!handle.ObjectToJson(obj, j))
         {
             if (message)
                 *message = handle.m_message;
             return false;
         }
 
-        jsonStr = handle.GetStringFromJsonValue(root);
+        jsonStr = j.dump(4);
         return true;
     }
 };
