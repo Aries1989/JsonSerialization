@@ -1,5 +1,7 @@
 #if 1
 #include "AIGCJson/AIGCJson.hpp"
+#include <memory>
+
 using namespace std;
 using namespace aigc;
 
@@ -25,12 +27,14 @@ public:
     string Name;
     int test;
     std::list<Student> students;
-    Popole master;
-    AIGC_JSON_HELPER(Name, test, students, master) //成员注册
+    std::shared_ptr<Popole> master;
+    std::shared_ptr<std::string> spContent;
+    AIGC_JSON_HELPER(Name, test, students, master, spContent) //成员注册
     AIGC_JSON_HELPER_DEFAULT("test=123")
 };
 
 string sjson = R"({
+    "spContent": "this is sp content",
     "Name": "yaronzz",
     "master" : {
         "name" : "mr liu",

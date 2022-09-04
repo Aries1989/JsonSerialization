@@ -807,6 +807,23 @@ public:
         return true;
     }
 
+    template<typename TYPE>
+    bool JsonToObject(TYPE* spObj, json& j)
+    {
+
+    }
+
+    template<typename TYPE>
+    bool JsonToObject(std::shared_ptr<TYPE>& spObj, json& j)
+    {
+        if (!spObj)
+        {
+            spObj = std::make_shared<TYPE>();
+        }
+
+        return JsonToObject(*spObj, j);
+    }
+
 public:
     /******************************************************
          * Conver base-type : base-type to json string
@@ -909,6 +926,30 @@ public:
         }
 
         return true;
+    }
+
+    template <typename TYPE>
+    bool ObjectToJson(TYPE* pObj, json& j)
+    {
+        if (!pObj)
+        {
+            std::cout << "ptr is null." << std::endl;
+            return false;
+        }
+
+        return ObjectToJson(*spObj, j);
+    }
+
+    template <typename TYPE>
+    bool ObjectToJson(std::shared_ptr<TYPE>& spObj, json& j)
+    {
+        if (!spObj)
+        {
+            std::cout << "spObj is null." << std::endl;
+            return false;
+        }
+        
+        return ObjectToJson(*spObj, j);
     }
 
 public:

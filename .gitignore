@@ -71,3 +71,5 @@ Thumbs.db
 *.dll
 *.exe
 
+/.vs/JsonSerialization/v16
+/debug
