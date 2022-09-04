@@ -31,9 +31,10 @@
 #include "nlohmann/json.hpp"
 using json = nlohmann::json;
 
-namespace aigc
+void LOG(const std::string& log)
 {
-
+    std::cout << log << std::endl;
+}
 /******************************************************
  * Register class or struct members
  * eg:
@@ -57,14 +58,14 @@ namespace aigc
         std::vector<std::string> standardNames = handle.GetMembersNames(#__VA_ARGS__);   \
         if (names.size() <= standardNames.size())                                        \
         {                                                                                \
-            for (size_t i = names.size(); i < standardNames.size(); i++)               \
+            for (size_t i = names.size(); i < standardNames.size(); i++)                 \
                 names.push_back(standardNames[i]);                                       \
         }                                                                                \
         return handle.SetMembers(names, 0, j, __aigcDefaultValues, __VA_ARGS__);         \
     }                                                                                    \
     bool AIGCObjectToJson(aigc::JsonHelperPrivate &handle,                               \
                           json& j,                                                       \
-                          std::vector<std::string> &names)                               \
+                          std::vector<std::string> &names) const                         \
     {                                                                                    \
         std::vector<std::string> standardNames = handle.GetMembersNames(#__VA_ARGS__);   \
         if (names.size() <= standardNames.size())                                        \
@@ -113,7 +114,7 @@ namespace aigc
     {                                                                        \
         return handle.SetBase(j, __VA_ARGS__);                               \
     }                                                                        \
-    bool AIGCBaseObjectToJson(aigc::JsonHelperPrivate &handle, json& j)      \
+    bool AIGCBaseObjectToJson(aigc::JsonHelperPrivate &handle, json& j) const\
     {                                                                        \
         return handle.GetBase(j, __VA_ARGS__);                               \
     }
@@ -135,7 +136,8 @@ namespace aigc
         __aigcDefaultValues = handle.GetMembersValueMap(#__VA_ARGS__); \
     }
 
-
+namespace aigc
+{
 class JsonHelperPrivate
 {
 public:
@@ -238,13 +240,14 @@ public:
             return true;
         }
 
-        m_message = "unsupported this type.";
+        //m_message = "unsupported this type.";
+        LOG("unsupported this type.");
         return false;
     }
 
     // 序列化
     template <typename T, typename enable_if<HasConverFunction<T>::has, int>::type = 0>
-    bool ObjectToJson(T &obj, json& j)
+    bool ObjectToJson(const T &obj, json& j)
     {
         // 基类序列化
         if (!BaseConverObjectToJson(obj, j))
@@ -258,15 +261,17 @@ public:
     // 枚举类型的序列化进行单独处理
     // 先转为int，再进行序列化
     template <typename T, typename enable_if<!HasConverFunction<T>::has, int>::type = 0>
-    bool ObjectToJson(T &obj, json& j)
+    bool ObjectToJson(const T &obj, json& j)
     {
         if (std::is_enum<T>::value)
         {
+            // ★★★ 编译时，如果此处报错，可将此处2行注释，通过后续的打印来查看到底是什么类型不支持
             int ivalue = static_cast<int>(obj);
             return ObjectToJson(ivalue, j);
         }
 
-        m_message = "unsupported this type.";
+        LOG("unsupported this type." + std::string(typeid(obj).name()));
+
         return false;
     }
 
@@ -277,13 +282,13 @@ public:
          ******************************************************/
     // 获取重命名的成员名称
     template <typename T, typename enable_if<HasRenameFunction<T>::has, int>::type = 0>
-    std::vector<std::string> LoadRenameArray(T &obj)
+    std::vector<std::string> LoadRenameArray(const T &obj)
     {
         return obj.AIGCRenameMembers(*this);
     }
 
     template <typename T, typename enable_if<!HasRenameFunction<T>::has, int>::type = 0>
-    std::vector<std::string> LoadRenameArray(T &obj)
+    std::vector<std::string> LoadRenameArray(const T &obj)
     {
         UN_USED(obj);
 
@@ -315,14 +320,14 @@ public:
 
     // 基类序列化
     template <typename T, typename enable_if<HasBaseConverFunction<T>::has, int>::type = 0>
-    bool BaseConverObjectToJson(T &obj, json& j)
+    bool BaseConverObjectToJson(const T &obj, json& j)
     {
         return obj.AIGCBaseObjectToJson(*this, j);
     }
 
     // 过滤!HasBaseConverFunction的对象,直接返回true
     template <typename T, typename enable_if<!HasBaseConverFunction<T>::has, int>::type = 0>
-    bool BaseConverObjectToJson(T &obj, json& j)
+    bool BaseConverObjectToJson(const T &obj, json& j)
     {
         UN_USED(j);
         UN_USED(obj);
@@ -499,7 +504,7 @@ public:
         // 基于arg的具体类型，调用相应的JsonToObject，实现具体参数的反序列化
         if (!JsonToObject(arg, *it))
         {
-            m_message = "[" + names[index] + "] " + m_message;
+            //m_message = "[" + names[index] + "] " + m_message;
             return false;
         }
         return true;
@@ -512,7 +517,7 @@ public:
         ******************************************************/
     template <typename TYPE, typename... TYPES>
     bool GetMembers(const std::vector<std::string> &names, int index, 
-        json &j, TYPE &arg, TYPES &...args)
+        json &j, const TYPE &arg, const TYPES &...args)
     {
         // index对应的字段参数的序列化
         if (!GetMembers(names, index, j, arg))
@@ -524,14 +529,14 @@ public:
 
     template <typename TYPE>
     bool GetMembers(const std::vector<std::string> &names, int index,
-        json &j, TYPE &arg)
+        json &j, const TYPE &arg)
     {
         json jv;
         // 基于arg的具体类型，调用相应的ObjectToJson，实现具体参数的序列化
         bool check = ObjectToJson(arg, jv);
         if (!check)
         {
-            m_message = "[" + names[index] + "] " + m_message;
+            //m_message = "[" + names[index] + "] " + m_message;
             return false;
         }
 
@@ -658,7 +663,9 @@ public:
         if (!j.is_number_integer())
         {
             
-            m_message = "json-value is " + std::string(j.type_name()) + " but object is int.";
+            //m_message = "json-value is " + std::string(j.type_name()) + " but object is int.";
+            LOG("json-value is " + std::string(j.type_name()) + " but object is int.");
+
             return false;
         }
         obj = j.get<int>();
@@ -669,7 +676,9 @@ public:
     {
         if (!j.is_number_unsigned())
         {
-            m_message = "json-value is " + std::string(j.type_name()) + " but object is unsigned int.";
+            //m_message = "json-value is " + std::string(j.type_name()) + " but object is unsigned int.";
+            LOG("json-value is " + std::string(j.type_name()) + " but object is unsigned int.");
+
             return false;
         }
         obj = j.get<unsigned int>();
@@ -680,7 +689,9 @@ public:
     {
         if (!j.is_number_integer())
         {
-            m_message = "json-value is " + std::string(j.type_name()) + " but object is int64_t.";
+            //m_message = "json-value is " + std::string(j.type_name()) + " but object is int64_t.";
+            LOG("json-value is " + std::string(j.type_name()) + " but object is int64_t.");
+
             return false;
         }
         obj = j.get<int64_t>();
@@ -691,7 +702,8 @@ public:
     {
         if (!j.is_number_unsigned())
         {
-            m_message = "json-value is " + std::string(j.type_name()) + " but object is uint64_t.";
+            //m_message = "json-value is " + std::string(j.type_name()) + " but object is uint64_t.";
+            LOG("json-value is " + std::string(j.type_name()) + " but object is uint64_t.");
             return false;
         }
         obj = j.get<uint64_t>();
@@ -702,7 +714,8 @@ public:
     {
         if (!j.is_boolean())
         {
-            m_message = "json-value is " + std::string(j.type_name()) + " but object is bool.";
+            //m_message = "json-value is " + std::string(j.type_name()) + " but object is bool.";
+            LOG("json-value is " + std::string(j.type_name()) + " but object is bool.");
             return false;
         }
         obj = j.get<bool>();
@@ -713,7 +726,8 @@ public:
     {
         if (!j.is_number_float())
         {
-            m_message = "json-value is " + std::string(j.type_name()) + " but object is float.";
+            //m_message = "json-value is " + std::string(j.type_name()) + " but object is float.";
+            LOG("json-value is " + std::string(j.type_name()) + " but object is float.");
             return false;
         }
         obj = j.get<float>();
@@ -724,7 +738,8 @@ public:
     {
         if (!j.is_number_float())
         {
-            m_message = "json-value is " + std::string(j.type_name()) + " but object is double.";
+            //m_message = "json-value is " + std::string(j.type_name()) + " but object is double.";
+            LOG("json-value is " + std::string(j.type_name()) + " but object is double.");
             return false;
         }
         obj = j.get<double>();
@@ -741,7 +756,8 @@ public:
             obj = GetStringFromJsonValue(j);
         else if (!j.is_string())
         {
-            m_message = "json-value is " + std::string(j.type_name()) + " but object is string.";
+            //m_message = "json-value is " + std::string(j.type_name()) + " but object is string.";
+            LOG("json-value is " + std::string(j.type_name()) + " but object is string.");
             return false;
         }
         else
@@ -756,7 +772,8 @@ public:
         obj.clear();
         if (!j.is_array())
         {
-            m_message = "json-value is " + std::string(j.type_name()) + " but object is std::vector<TYPE>.";
+            //m_message = "json-value is " + std::string(j.type_name()) + " but object is std::vector<TYPE>.";
+            LOG("json-value is " + std::string(j.type_name()) + " but object is std::vector<TYPE>.");
             return false;
         }
 
@@ -777,7 +794,8 @@ public:
     {
         if (!j.is_array())
         {
-            m_message = "json-value is " + std::string(j.type_name()) + " but object is std::array<TYPE, N>.";
+            //m_message = "json-value is " + std::string(j.type_name()) + " but object is std::array<TYPE, N>.";
+            LOG("json-value is " + std::string(j.type_name()) + " but object is std::array<TYPE, N>.");
             return false;
         }
 
@@ -801,7 +819,8 @@ public:
         obj.clear();
         if (!j.is_array())
         {
-            m_message = "json-value is " + std::string(j.type_name()) + " but object is std::list<TYPE>.";
+            //m_message = "json-value is " + std::string(j.type_name()) + " but object is std::list<TYPE>.";
+            LOG("json-value is " + std::string(j.type_name()) + " but object is std::list<TYPE>.");
             return false;
         }
 
@@ -823,7 +842,8 @@ public:
         obj.clear();
         if (!j.is_array())
         {
-            m_message = "json-value is " + std::string(j.type_name()) + " but object is std::set<TYPE>.";
+            //m_message = "json-value is " + std::string(j.type_name()) + " but object is std::set<TYPE>.";
+            LOG("json-value is " + std::string(j.type_name()) + " but object is std::set<TYPE>.");
             return false;
         }
 
@@ -845,7 +865,8 @@ public:
         obj.clear();
         if (!j.is_object())
         {
-            m_message = "json-value is " + std::string(j.type_name()) + " but object is std::map<std::string, TYPE>.";
+            //m_message = "json-value is " + std::string(j.type_name()) + " but object is std::map<std::string, TYPE>.";
+            LOG("json-value is " + std::string(j.type_name()) + " but object is std::map<std::string, TYPE>.");
             return false;
         }
 
@@ -890,56 +911,56 @@ public:
          *          double、string、vector、list、map<string,XX>
          *
          ******************************************************/
-    bool ObjectToJson(int &obj, json& j)
+    bool ObjectToJson(const int &obj, json& j)
     {
         j = obj;
         return true;
     }
 
-    bool ObjectToJson(unsigned int &obj, json& j)
+    bool ObjectToJson(const unsigned int &obj, json& j)
     {
         j = obj;
         return true;
     }
 
-    bool ObjectToJson(int64_t &obj, json& j)
+    bool ObjectToJson(const int64_t &obj, json& j)
     {
         j = obj;
         return true;
     }
 
-    bool ObjectToJson(uint64_t &obj, json& j)
+    bool ObjectToJson(const uint64_t &obj, json& j)
     {
         j = obj;
         return true;
     }
 
-    bool ObjectToJson(bool &obj, json& j)
+    bool ObjectToJson(const bool &obj, json& j)
     {
         j = obj;
         return true;
     }
 
-    bool ObjectToJson(float &obj, json& j)
+    bool ObjectToJson(const float &obj, json& j)
     {
         j = obj;
         return true;
     }
 
-    bool ObjectToJson(double &obj, json& j)
+    bool ObjectToJson(const double &obj, json& j)
     {
         j = obj;
         return true;
     }
 
-    bool ObjectToJson(std::string &obj, json& j)
+    bool ObjectToJson(const std::string &obj, json& j)
     {
         j = obj;
         return true;
     }
 
     template<typename TYPE>
-    bool JsonPushBack(TYPE& v, json& j)
+    bool JsonPushBack(const TYPE& v, json& j)
     {
         json jv;
         if (!ObjectToJson(v, jv))
@@ -952,9 +973,9 @@ public:
     }
 
     template <typename TYPE>
-    bool ObjectToJson(std::vector<TYPE> &obj, json& j)
+    bool ObjectToJson(const std::vector<TYPE> &obj, json& j)
     {
-        for (auto& v : obj)
+        for (const auto& v : obj)
         {
             if (!JsonPushBack(v, j))
             {
@@ -965,9 +986,9 @@ public:
     }
 
     template<typename TYPE, std::size_t N>
-    bool ObjectToJson(std::array<TYPE, N>& obj, json& j)
+    bool ObjectToJson(const std::array<TYPE, N>& obj, json& j)
     {
-        for (auto& v : obj)
+        for (const auto& v : obj)
         {
             if (!JsonPushBack(v, j))
             {
@@ -978,9 +999,9 @@ public:
     }
 
     template <typename TYPE>
-    bool ObjectToJson(std::list<TYPE> &obj, json& j)
+    bool ObjectToJson(const std::list<TYPE> &obj, json& j)
     {
-        for (auto& v : obj)
+        for (const auto& v : obj)
         {
             if (!JsonPushBack(v, j))
             {
@@ -991,11 +1012,10 @@ public:
     }
 
     template <typename TYPE>
-    bool ObjectToJson(std::set<TYPE>& obj, json& j)
+    bool ObjectToJson(const std::set<TYPE>& obj, json& j)
     {
-        for (auto it = obj.begin(); it != obj.end(); ++it)
+        for (const auto& v : obj)
         {
-            auto v = *it;
             if (!JsonPushBack(v, j))
             {
                 return false;
@@ -1005,9 +1025,9 @@ public:
     }
 
     template <typename TYPE>
-    bool ObjectToJson(std::map<std::string, TYPE> &obj, json& j)
+    bool ObjectToJson(const std::map<std::string, TYPE> &obj, json& j)
     {
-        for (auto& p : obj)
+        for (const auto& p : obj)
         {
             json jv;
             if (!ObjectToJson(p.second, jv))
@@ -1026,7 +1046,7 @@ public:
     {
         if (!pObj)
         {
-            std::cout << "ptr is nullptr." << std::endl;
+            LOG("pObj is nullptr.");
             return false;
         }
 
@@ -1034,19 +1054,16 @@ public:
     }
 
     template <typename TYPE>
-    bool ObjectToJson(std::shared_ptr<TYPE>& spObj, json& j)
+    bool ObjectToJson(const std::shared_ptr<TYPE>& spObj, json& j)
     {
         if (!spObj)
         {
-            std::cout << "spObj is null." << std::endl;
+            LOG("spObj is nullptr.");
             return false;
         }
         
         return ObjectToJson(*spObj, j);
     }
-
-public:
-    std::string m_message;
 };
 
 class JsonHelper
@@ -1065,8 +1082,7 @@ public:
         json j = json::parse(jsonStr);
         if (j.is_null())
         {
-            if (message)
-                *message = "Json string can't parse.";
+            LOG("Json string can't parse.");
             return false;
         }
 
@@ -1082,8 +1098,7 @@ public:
             auto it = j.find(keys[i]);
             if (!j.is_object() || it == j.end())
             {
-                if (message)
-                    *message = "Can't parse the path [" + path + "].";
+                LOG("Can't parse the path [" + path + "].");
                 return false;
             }
             j = *it;
@@ -1093,8 +1108,6 @@ public:
         JsonHelperPrivate handle;
         if (!handle.JsonToObject(obj, j))
         {
-            if (message)
-                *message = handle.m_message;
             return false;
         }
         return true;
@@ -1124,15 +1137,13 @@ public:
          * @param jsonStr : json string 
          */
     template <typename T>
-    static bool ObjectToJson(T &obj, std::string &jsonStr, std::string *message = NULL)
+    static bool ObjectToJson(const T &obj, std::string &jsonStr, std::string *message = NULL)
     {
         json j;
         //Conver
         JsonHelperPrivate handle;
         if (!handle.ObjectToJson(obj, j))
         {
-            if (message)
-                *message = handle.m_message;
             return false;
         }
 
