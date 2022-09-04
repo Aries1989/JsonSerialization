@@ -25,6 +25,8 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <unordered_set>
+#include <unordered_map>
 
 #define UN_USED(V) (void)(V)
 
@@ -842,8 +844,29 @@ public:
         obj.clear();
         if (!j.is_array())
         {
-            //m_message = "json-value is " + std::string(j.type_name()) + " but object is std::set<TYPE>.";
             LOG("json-value is " + std::string(j.type_name()) + " but object is std::set<TYPE>.");
+            return false;
+        }
+
+        for (auto it = j.begin(); it != j.end(); ++it)
+        {
+            TYPE item;
+            if (!JsonToObject(item, *it))
+            {
+                return false;
+            }
+            obj.insert(item);
+        }
+        return true;
+    }
+
+    template <typename TYPE>
+    bool JsonToObject(std::unordered_set<TYPE>& obj, json& j)
+    {
+        obj.clear();
+        if (!j.is_array())
+        {
+            LOG("json-value is " + std::string(j.type_name()) + " but object is std::unordered_set<TYPE>.");
             return false;
         }
 
@@ -871,6 +894,29 @@ public:
         }
 
         for (auto it=j.begin(); it!=j.end(); ++it)
+        {
+            TYPE item;
+            if (!JsonToObject(item, it.value()))
+            {
+                return false;
+            }
+
+            obj.insert(std::pair<std::string, TYPE>(it.key(), item));
+        }
+        return true;
+    }
+
+    template <typename TYPE>
+    bool JsonToObject(std::unordered_map<std::string, TYPE>& obj, json& j)
+    {
+        obj.clear();
+        if (!j.is_object())
+        {
+            LOG("json-value is " + std::string(j.type_name()) + " but object is std::unordered_map<std::string, TYPE>.");
+            return false;
+        }
+
+        for (auto it = j.begin(); it != j.end(); ++it)
         {
             TYPE item;
             if (!JsonToObject(item, it.value()))
@@ -1025,7 +1071,37 @@ public:
     }
 
     template <typename TYPE>
+    bool ObjectToJson(const std::unordered_set<TYPE>& obj, json& j)
+    {
+        for (const auto& v : obj)
+        {
+            if (!JsonPushBack(v, j))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    template <typename TYPE>
     bool ObjectToJson(const std::map<std::string, TYPE> &obj, json& j)
+    {
+        for (const auto& p : obj)
+        {
+            json jv;
+            if (!ObjectToJson(p.second, jv))
+            {
+                return false;
+            }
+
+            j[p.first] = jv;
+        }
+
+        return true;
+    }
+
+    template <typename TYPE>
+    bool ObjectToJson(const std::unordered_map<std::string, TYPE>& obj, json& j)
     {
         for (const auto& p : obj)
         {
@@ -1077,7 +1153,7 @@ public:
          * @param message : printf err message when conver failed
          */
     template <typename T>
-    static bool JsonToObject(T &obj, const std::string &jsonStr, const std::vector<std::string> keys = {}, std::string *message = NULL)
+    static bool JsonToObject(T &obj, const std::string &jsonStr, const std::vector<std::string> keys = {})
     {
         json j = json::parse(jsonStr);
         if (j.is_null())
@@ -1137,7 +1213,7 @@ public:
          * @param jsonStr : json string 
          */
     template <typename T>
-    static bool ObjectToJson(const T &obj, std::string &jsonStr, std::string *message = NULL)
+    static bool ObjectToJson(const T &obj, std::string &jsonStr)
     {
         json j;
         //Conver
