@@ -246,11 +246,6 @@ public:
     template <typename T, typename enable_if<HasConverFunction<T>::has, int>::type = 0>
     bool ObjectToJson(T &obj, json& j)
     {
-        //if (j.is_null())
-        //{
-        //    j = json();
-        //}
-
         // 基类序列化
         if (!BaseConverObjectToJson(obj, j))
             return false;
