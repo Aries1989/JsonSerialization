@@ -23,7 +23,7 @@ public:
     AIGC_JSON_HELPER_BASE((Popole*)this) //基类注册
 };
 
-class Class
+class TheClass
 {
 public:
     string Name;
@@ -31,16 +31,32 @@ public:
     std::list<Student> students;
     Popole* master = nullptr;
     std::shared_ptr<std::string> spContent;
-    std::set<float> arr;
-    AIGC_JSON_HELPER(Name, test, students, master, spContent, arr) //成员注册
+    std::unordered_set<float> arr;
+    std::unordered_map<int, int> mapKV;
+    glm::dvec2 v2;
+    AIGC_JSON_HELPER(Name, test, students, master, spContent, arr, mapKV, v2) //成员注册
     AIGC_JSON_HELPER_DEFAULT("test=123")
 };
 
 string sjson = R"({
+    "v2": {
+        "x": 1.0,
+        "y": 2.0
+    },
     "arr": [
         1.0,
         1.1,
         1.2
+    ],
+    "mapKV": [
+        {
+            "key": 0,
+            "value": 1
+        },
+        {
+            "key": 1,
+            "value": 2
+        }
     ],
     "spContent": "this is sp content",
     "Name": "yaronzz",
@@ -66,8 +82,8 @@ string sjson = R"({
 
 int main()
 {
-    std::cout << sjson << std::endl;
-    Class my;
+    //std::cout << sjson << std::endl;
+    TheClass my;
     JsonHelper::JsonToObject(my, sjson);
 
     std::string str;

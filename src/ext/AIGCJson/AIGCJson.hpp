@@ -28,6 +28,10 @@
 #include <unordered_set>
 #include <unordered_map>
 
+#ifdef SUPPORT_GLM_SERIALIZATION
+#include "glm/glm.hpp"
+#endif
+
 #define UN_USED(V) (void)(V)
 
 #include "nlohmann/json.hpp"
@@ -967,6 +971,32 @@ public:
         return JsonToObject(*spObj, j);
     }
 
+#ifdef SUPPORT_GLM_SERIALIZATION
+    template <typename T>
+    bool GetValueByKey(T& v, json& j, const std::string& k)
+    {
+        auto it = j.find(k);
+        if (it == j.end()) return false;
+        if (!JsonToObject(v, it.value())) return false;
+        return true;
+    }
+
+    template <typename T, size_t N>
+    bool JsonToObject(glm::vec<N, T, glm::highp>& v, json& j)
+    {
+        static std::vector<std::string> keys = {"x", "y", "z", "w"};
+        assert(N <= keys.size());
+
+        for (int i = 0; i < N; ++i)
+        {
+            if(!GetValueByKey(v[i], j, keys[i])) return false;
+        }
+
+        return true;
+    }
+
+#endif
+
 public:
     /******************************************************
          * Conver base-type : base-type to json string
@@ -1179,6 +1209,21 @@ public:
         
         return ObjectToJson(*spObj, j);
     }
+
+#ifdef SUPPORT_GLM_SERIALIZATION
+    template <typename T, size_t N>
+    bool ObjectToJson(const glm::vec<N, T, glm::highp>& v, json& j)
+    {
+        static std::vector<std::string> keys = {"x", "y", "z", "w"};
+        assert(N <= keys.size());
+
+        for (int i = 0; i < N; ++i) {
+            j[keys[i]] = v[i];
+        }
+
+        return true;
+    }
+#endif
 };
 
 class JsonHelper
