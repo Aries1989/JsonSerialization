@@ -13,6 +13,7 @@ public:
 
     AIGC_JSON_HELPER(name, age) //成员注册
 };
+
 class Student : Popole
 {
 public:
@@ -21,19 +22,26 @@ public:
     AIGC_JSON_HELPER(depart, grade) //成员注册
     AIGC_JSON_HELPER_BASE((Popole*)this) //基类注册
 };
+
 class Class
 {
 public:
     string Name;
     int test;
     std::list<Student> students;
-    std::shared_ptr<Popole> master;
+    Popole* master = nullptr;
     std::shared_ptr<std::string> spContent;
-    AIGC_JSON_HELPER(Name, test, students, master, spContent) //成员注册
+    std::set<float> arr;
+    AIGC_JSON_HELPER(Name, test, students, master, spContent, arr) //成员注册
     AIGC_JSON_HELPER_DEFAULT("test=123")
 };
 
 string sjson = R"({
+    "arr": [
+        1.0,
+        1.1,
+        1.2
+    ],
     "spContent": "this is sp content",
     "Name": "yaronzz",
     "master" : {
@@ -66,6 +74,9 @@ int main()
     JsonHelper::ObjectToJson(my, str);
     std::cout << str << std::endl;
 
+
+    //std::array<int, 3> arr;
+    //std::cout << arr.size();
     return 0;
 }
 

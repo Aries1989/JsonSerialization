@@ -73,3 +73,8 @@ Thumbs.db
 
 /.vs/JsonSerialization/v16
 /debug
+/build-JsonSerialization-Desktop_Qt_5_15_2_MSVC2019_64bit-Debug
+/src/.vs/JsonSerialization/v16
+/src/debug
+/src/release/qmake
+/src/.qmake.stash

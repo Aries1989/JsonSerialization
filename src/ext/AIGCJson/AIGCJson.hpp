@@ -18,11 +18,15 @@
  * 
  */
 #pragma once
+#include <set>
 #include <list>
 #include <map>
+#include <array>
 #include <vector>
 #include <string>
 #include <iostream>
+
+#define UN_USED(V) (void)(V)
 
 #include "nlohmann/json.hpp"
 using json = nlohmann::json;
@@ -53,7 +57,7 @@ namespace aigc
         std::vector<std::string> standardNames = handle.GetMembersNames(#__VA_ARGS__);   \
         if (names.size() <= standardNames.size())                                        \
         {                                                                                \
-            for (int i = names.size(); i < (int)standardNames.size(); i++)               \
+            for (size_t i = names.size(); i < standardNames.size(); i++)               \
                 names.push_back(standardNames[i]);                                       \
         }                                                                                \
         return handle.SetMembers(names, 0, j, __aigcDefaultValues, __VA_ARGS__);         \
@@ -65,7 +69,7 @@ namespace aigc
         std::vector<std::string> standardNames = handle.GetMembersNames(#__VA_ARGS__);   \
         if (names.size() <= standardNames.size())                                        \
         {                                                                                \
-            for (int i = names.size(); i < (int)standardNames.size(); i++)               \
+            for (size_t i = names.size(); i < standardNames.size(); i++)               \
                 names.push_back(standardNames[i]);                                       \
         }                                                                                \
         return handle.GetMembers(names, 0, j, __VA_ARGS__);                              \
@@ -242,10 +246,10 @@ public:
     template <typename T, typename enable_if<HasConverFunction<T>::has, int>::type = 0>
     bool ObjectToJson(T &obj, json& j)
     {
-        if (j.is_null())
-        {
-            j = json();
-        }
+        //if (j.is_null())
+        //{
+        //    j = json();
+        //}
 
         // 基类序列化
         if (!BaseConverObjectToJson(obj, j))
@@ -286,6 +290,8 @@ public:
     template <typename T, typename enable_if<!HasRenameFunction<T>::has, int>::type = 0>
     std::vector<std::string> LoadRenameArray(T &obj)
     {
+        UN_USED(obj);
+
         return std::vector<std::string>();
     }
 
@@ -306,6 +312,9 @@ public:
     template <typename T, typename enable_if<!HasBaseConverFunction<T>::has, int>::type = 0>
     bool BaseConverJsonToObject(T &obj, json& j)
     {
+        UN_USED(j);
+        UN_USED(obj);
+
         return true;
     }
 
@@ -320,6 +329,9 @@ public:
     template <typename T, typename enable_if<!HasBaseConverFunction<T>::has, int>::type = 0>
     bool BaseConverObjectToJson(T &obj, json& j)
     {
+        UN_USED(j);
+        UN_USED(obj);
+
         return true;
     }
 
@@ -590,6 +602,9 @@ public:
     template <typename TYPE>
     void StringToObject(TYPE &obj, std::string &value)
     {
+        UN_USED(value);
+        UN_USED(obj);
+
         return;
     }
 
@@ -628,7 +643,7 @@ public:
 
     void StringToObject(float &obj, std::string &value)
     {
-        obj = atof(value.c_str());
+        obj = (float)atof(value.c_str());
     }
 
     void StringToObject(double &obj, std::string &value)
@@ -762,6 +777,29 @@ public:
         return true;
     }
 
+    template<typename TYPE, std::size_t N>
+    bool JsonToObject(std::array<TYPE, N>& obj, json& j)
+    {
+        if (!j.is_array())
+        {
+            m_message = "json-value is " + std::string(j.type_name()) + " but object is std::array<TYPE, N>.";
+            return false;
+        }
+
+        assert(obj.size() == j.size());
+        size_t i = 0;
+        for (auto it = j.begin(); it != j.end(); ++it, ++i)
+        {
+            TYPE& item = obj[i];
+            if (!JsonToObject(item, *it))
+            {
+                return false;
+            }
+            //obj[i] = item;
+        }
+        return true;
+    }
+
     template <typename TYPE>
     bool JsonToObject(std::list<TYPE> &obj, json& j)
     {
@@ -785,6 +823,28 @@ public:
     }
 
     template <typename TYPE>
+    bool JsonToObject(std::set<TYPE>& obj, json& j)
+    {
+        obj.clear();
+        if (!j.is_array())
+        {
+            m_message = "json-value is " + std::string(j.type_name()) + " but object is std::set<TYPE>.";
+            return false;
+        }
+
+        for (auto it = j.begin(); it != j.end(); ++it)
+        {
+            TYPE item;
+            if (!JsonToObject(item, *it))
+            {
+                return false;
+            }
+            obj.insert(item);
+        }
+        return true;
+    }
+
+    template <typename TYPE>
     bool JsonToObject(std::map<std::string, TYPE> &obj, json& j)
     {
         obj.clear();
@@ -794,7 +854,7 @@ public:
             return false;
         }
 
-        for (const auto& it=j.cbegin(); it!=j.cend(); ++it)
+        for (auto it=j.begin(); it!=j.end(); ++it)
         {
             TYPE item;
             if (!JsonToObject(item, it.value()))
@@ -808,9 +868,13 @@ public:
     }
 
     template<typename TYPE>
-    bool JsonToObject(TYPE* spObj, json& j)
+    bool JsonToObject(TYPE*& pObj, json& j)
     {
-
+        if (!pObj)
+        {
+            pObj = new TYPE();
+        }
+        return JsonToObject(*pObj, j);
     }
 
     template<typename TYPE>
@@ -879,18 +943,41 @@ public:
         return true;
     }
 
+    template<typename TYPE>
+    bool JsonPushBack(TYPE& v, json& j)
+    {
+        json jv;
+        if (!ObjectToJson(v, jv))
+        {
+            return false;
+        }
+
+        j.push_back(jv);
+        return true;
+    }
+
     template <typename TYPE>
     bool ObjectToJson(std::vector<TYPE> &obj, json& j)
     {
-        for (const auto& v : obj)
+        for (auto& v : obj)
         {
-            json jv;
-            if (!ObjectToJson(v, jv))
+            if (!JsonPushBack(v, j))
             {
                 return false;
             }
+        }
+        return true;
+    }
 
-            j.push_back(jv);
+    template<typename TYPE, std::size_t N>
+    bool ObjectToJson(std::array<TYPE, N>& obj, json& j)
+    {
+        for (auto& v : obj)
+        {
+            if (!JsonPushBack(v, j))
+            {
+                return false;
+            }
         }
         return true;
     }
@@ -900,13 +987,24 @@ public:
     {
         for (auto& v : obj)
         {
-            json jv;
-            if (!ObjectToJson(v, jv))
+            if (!JsonPushBack(v, j))
             {
                 return false;
             }
+        }
+        return true;
+    }
 
-            j.push_back(jv);
+    template <typename TYPE>
+    bool ObjectToJson(std::set<TYPE>& obj, json& j)
+    {
+        for (auto it = obj.begin(); it != obj.end(); ++it)
+        {
+            auto v = *it;
+            if (!JsonPushBack(v, j))
+            {
+                return false;
+            }
         }
         return true;
     }
@@ -914,7 +1012,7 @@ public:
     template <typename TYPE>
     bool ObjectToJson(std::map<std::string, TYPE> &obj, json& j)
     {
-        for (const auto& p : obj)
+        for (auto& p : obj)
         {
             json jv;
             if (!ObjectToJson(p.second, jv))
@@ -933,11 +1031,11 @@ public:
     {
         if (!pObj)
         {
-            std::cout << "ptr is null." << std::endl;
+            std::cout << "ptr is nullptr." << std::endl;
             return false;
         }
 
-        return ObjectToJson(*spObj, j);
+        return ObjectToJson(*pObj, j);
     }
 
     template <typename TYPE>
