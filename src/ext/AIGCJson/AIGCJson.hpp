@@ -665,7 +665,6 @@ public:
         if (!j.is_number_integer())
         {
             
-            //m_message = "json-value is " + std::string(j.type_name()) + " but object is int.";
             LOG("json-value is " + std::string(j.type_name()) + " but object is int.");
 
             return false;
@@ -678,7 +677,6 @@ public:
     {
         if (!j.is_number_unsigned())
         {
-            //m_message = "json-value is " + std::string(j.type_name()) + " but object is unsigned int.";
             LOG("json-value is " + std::string(j.type_name()) + " but object is unsigned int.");
 
             return false;
@@ -691,7 +689,6 @@ public:
     {
         if (!j.is_number_integer())
         {
-            //m_message = "json-value is " + std::string(j.type_name()) + " but object is int64_t.";
             LOG("json-value is " + std::string(j.type_name()) + " but object is int64_t.");
 
             return false;
@@ -704,7 +701,6 @@ public:
     {
         if (!j.is_number_unsigned())
         {
-            //m_message = "json-value is " + std::string(j.type_name()) + " but object is uint64_t.";
             LOG("json-value is " + std::string(j.type_name()) + " but object is uint64_t.");
             return false;
         }
@@ -716,7 +712,6 @@ public:
     {
         if (!j.is_boolean())
         {
-            //m_message = "json-value is " + std::string(j.type_name()) + " but object is bool.";
             LOG("json-value is " + std::string(j.type_name()) + " but object is bool.");
             return false;
         }
@@ -728,7 +723,6 @@ public:
     {
         if (!j.is_number_float())
         {
-            //m_message = "json-value is " + std::string(j.type_name()) + " but object is float.";
             LOG("json-value is " + std::string(j.type_name()) + " but object is float.");
             return false;
         }
@@ -740,7 +734,6 @@ public:
     {
         if (!j.is_number_float())
         {
-            //m_message = "json-value is " + std::string(j.type_name()) + " but object is double.";
             LOG("json-value is " + std::string(j.type_name()) + " but object is double.");
             return false;
         }
@@ -758,7 +751,6 @@ public:
             obj = GetStringFromJsonValue(j);
         else if (!j.is_string())
         {
-            //m_message = "json-value is " + std::string(j.type_name()) + " but object is string.";
             LOG("json-value is " + std::string(j.type_name()) + " but object is string.");
             return false;
         }
@@ -774,8 +766,7 @@ public:
         obj.clear();
         if (!j.is_array())
         {
-            //m_message = "json-value is " + std::string(j.type_name()) + " but object is std::vector<TYPE>.";
-            LOG("json-value is " + std::string(j.type_name()) + " but object is std::vector<TYPE>.");
+            LOG("json-value is " + std::string(j.type_name()) + " but object is " + typeid(obj).name());
             return false;
         }
 
@@ -796,8 +787,7 @@ public:
     {
         if (!j.is_array())
         {
-            //m_message = "json-value is " + std::string(j.type_name()) + " but object is std::array<TYPE, N>.";
-            LOG("json-value is " + std::string(j.type_name()) + " but object is std::array<TYPE, N>.");
+            LOG("json-value is " + std::string(j.type_name()) + " but object is " + typeid(obj).name());
             return false;
         }
 
@@ -821,8 +811,7 @@ public:
         obj.clear();
         if (!j.is_array())
         {
-            //m_message = "json-value is " + std::string(j.type_name()) + " but object is std::list<TYPE>.";
-            LOG("json-value is " + std::string(j.type_name()) + " but object is std::list<TYPE>.");
+            LOG("json-value is " + std::string(j.type_name()) + " but object is " + typeid(obj).name());
             return false;
         }
 
@@ -844,7 +833,7 @@ public:
         obj.clear();
         if (!j.is_array())
         {
-            LOG("json-value is " + std::string(j.type_name()) + " but object is std::set<TYPE>.");
+            LOG("json-value is " + std::string(j.type_name()) + " but object is " + typeid(obj).name());
             return false;
         }
 
@@ -866,7 +855,7 @@ public:
         obj.clear();
         if (!j.is_array())
         {
-            LOG("json-value is " + std::string(j.type_name()) + " but object is std::unordered_set<TYPE>.");
+            LOG("json-value is " + std::string(j.type_name()) + " but object is " + typeid(obj).name());
             return false;
         }
 
@@ -882,49 +871,77 @@ public:
         return true;
     }
 
-    template <typename TYPE>
-    bool JsonToObject(std::map<std::string, TYPE> &obj, json& j)
+    template <typename KEY_TYPE, typename VALUE_TYPE>
+    bool JsonToObject(std::map<KEY_TYPE, VALUE_TYPE> &obj, json& j)
     {
         obj.clear();
         if (!j.is_object())
         {
-            //m_message = "json-value is " + std::string(j.type_name()) + " but object is std::map<std::string, TYPE>.";
-            LOG("json-value is " + std::string(j.type_name()) + " but object is std::map<std::string, TYPE>.");
+            LOG("json-value is " + std::string(j.type_name()) + " but object is " + typeid(obj).name());
             return false;
         }
 
         for (auto it=j.begin(); it!=j.end(); ++it)
         {
-            TYPE item;
-            if (!JsonToObject(item, it.value()))
+            json jPair = *it;
+
+            KEY_TYPE k;
+            if (!JsonToObject(k, jPair["key"]))
             {
                 return false;
             }
 
-            obj.insert(std::pair<std::string, TYPE>(it.key(), item));
+            VALUE_TYPE v;
+            if (!JsonToObject(v, jPair["value"]))
+            {
+                return false;
+            }
+
+            obj.insert(std::pair<KEY_TYPE, VALUE_TYPE>(k, v));
         }
         return true;
     }
 
-    template <typename TYPE>
-    bool JsonToObject(std::unordered_map<std::string, TYPE>& obj, json& j)
+    template <typename KEY_TYPE, typename VALUE_TYPE>
+    bool JsonToObject(std::unordered_map<KEY_TYPE, VALUE_TYPE>& obj, json& j)
     {
         obj.clear();
-        if (!j.is_object())
+        if (!j.is_array())
         {
-            LOG("json-value is " + std::string(j.type_name()) + " but object is std::unordered_map<std::string, TYPE>.");
+            LOG("json-value is " + std::string(j.type_name()) + " but object is " + typeid(obj).name());
             return false;
         }
 
         for (auto it = j.begin(); it != j.end(); ++it)
         {
-            TYPE item;
-            if (!JsonToObject(item, it.value()))
+            json jPair = *it;
+
+            auto itKey = jPair.find("key");
+            if (itKey == jPair.end())
             {
                 return false;
             }
 
-            obj.insert(std::pair<std::string, TYPE>(it.key(), item));
+            KEY_TYPE k;
+            if (!JsonToObject(k, itKey.value()))
+            {
+                return false;
+            }
+
+
+            auto itValue = jPair.find("value");
+            if (itValue == jPair.end())
+            {
+                return false;
+            }
+
+            VALUE_TYPE v;
+            if (!JsonToObject(v, itValue.value()))
+            {
+                return false;
+            }
+
+            obj.insert(std::pair<KEY_TYPE, VALUE_TYPE>(k, v));
         }
         return true;
     }
@@ -1083,35 +1100,57 @@ public:
         return true;
     }
 
-    template <typename TYPE>
-    bool ObjectToJson(const std::map<std::string, TYPE> &obj, json& j)
+    template <typename KEY_TYPE, typename VALUE_TYPE>
+    bool ObjectToJson(const std::map<KEY_TYPE, VALUE_TYPE> &obj, json& j)
     {
         for (const auto& p : obj)
         {
+            json jPair;
+
+            json jk;
+            if (!ObjectToJson(p.first, jk))
+            {
+                return false;
+            }
+            jPair["key"] = jk;
+
             json jv;
             if (!ObjectToJson(p.second, jv))
             {
                 return false;
             }
 
-            j[p.first] = jv;
+            jPair["value"] = jv;
+
+            j.push_back(jPair);
         }
 
         return true;
     }
 
-    template <typename TYPE>
-    bool ObjectToJson(const std::unordered_map<std::string, TYPE>& obj, json& j)
+    template <typename KEY_TYPE, typename VALUE_TYPE>
+    bool ObjectToJson(const std::unordered_map<KEY_TYPE, VALUE_TYPE>& obj, json& j)
     {
         for (const auto& p : obj)
         {
+            json jPair;
+
+            json jk;
+            if (!ObjectToJson(p.first, jk))
+            {
+                return false;
+            }
+            jPair["key"] = jk;
+
             json jv;
             if (!ObjectToJson(p.second, jv))
             {
                 return false;
             }
 
-            j[p.first] = jv;
+            jPair["value"] = jv;
+
+            j.push_back(jPair);
         }
 
         return true;
