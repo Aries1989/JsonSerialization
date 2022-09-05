@@ -740,8 +740,8 @@ public:
         return true;
     }
 
-    template <typename TYPE>
-    inline bool JsonToObject(std::vector<TYPE> &obj, json& j)
+    template <typename T>
+    inline bool JsonToObject(std::vector<T> &obj, json& j)
     {
         obj.clear();
         if (!j.is_array())
@@ -752,7 +752,7 @@ public:
 
         for (auto it = j.begin(); it != j.end(); ++it)
         {
-            TYPE item;
+            T item;
             if (!JsonToObject(item, *it))
             {
                 return false;
@@ -762,8 +762,8 @@ public:
         return true;
     }
 
-    template<typename TYPE, std::size_t N>
-    bool JsonToObject(std::array<TYPE, N>& obj, json& j)
+    template<typename T, std::size_t N>
+    bool JsonToObject(std::array<T, N>& obj, json& j)
     {
         if (!j.is_array())
         {
@@ -775,7 +775,7 @@ public:
         size_t i = 0;
         for (auto it = j.begin(); it != j.end(); ++it, ++i)
         {
-            TYPE& item = obj[i];
+            T& item = obj[i];
             if (!JsonToObject(item, *it))
             {
                 return false;
@@ -784,8 +784,8 @@ public:
         return true;
     }
 
-    template <typename TYPE>
-    inline bool JsonToObject(std::list<TYPE> &obj, json& j)
+    template <typename T>
+    inline bool JsonToObject(std::list<T> &obj, json& j)
     {
         obj.clear();
         if (!j.is_array())
@@ -796,7 +796,7 @@ public:
 
         for (auto it = j.begin(); it != j.end(); ++it)
         {
-            TYPE item;
+            T item;
             if (!JsonToObject(item, *it))
             {
                 return false;
@@ -806,8 +806,8 @@ public:
         return true;
     }
 
-    template <typename TYPE>
-    inline bool JsonToObject(std::set<TYPE>& obj, json& j)
+    template <typename T>
+    inline bool JsonToObject(std::set<T>& obj, json& j)
     {
         obj.clear();
         if (!j.is_array())
@@ -818,7 +818,7 @@ public:
 
         for (auto it = j.begin(); it != j.end(); ++it)
         {
-            TYPE item;
+            T item;
             if (!JsonToObject(item, *it))
             {
                 return false;
@@ -828,8 +828,8 @@ public:
         return true;
     }
 
-    template <typename TYPE>
-    inline bool JsonToObject(std::unordered_set<TYPE>& obj, json& j)
+    template <typename T>
+    inline bool JsonToObject(std::unordered_set<T>& obj, json& j)
     {
         obj.clear();
         if (!j.is_array())
@@ -840,7 +840,7 @@ public:
 
         for (auto it = j.begin(); it != j.end(); ++it)
         {
-            TYPE item;
+            T item;
             if (!JsonToObject(item, *it))
             {
                 return false;
@@ -939,22 +939,22 @@ public:
     }
 
 
-    template<typename TYPE>
-    inline bool JsonToObject(TYPE*& pObj, json& j)
+    template<typename T>
+    inline bool JsonToObject(T*& pObj, json& j)
     {
         if (!pObj)
         {
-            pObj = new TYPE();
+            pObj = new T();
         }
         return JsonToObject(*pObj, j);
     }
 
-    template<typename TYPE>
-    inline bool JsonToObject(std::shared_ptr<TYPE>& spObj, json& j)
+    template<typename T>
+    inline bool JsonToObject(std::shared_ptr<T>& spObj, json& j)
     {
         if (!spObj)
         {
-            spObj = std::make_shared<TYPE>();
+            spObj = std::make_shared<T>();
         }
 
         return JsonToObject(*spObj, j);
