@@ -87,20 +87,20 @@ struct Geo
 
 struct Table
 {
-    std::vector<float> vecNames;
+    std::vector<unsigned short> vecNames;
     CBIM_JSON_HELPER(vecNames)
 };
 
 int main()
 {
     //std::cout << sjson << std::endl;
-    TheClass my;
-    JsonSerializationHelper::JsonToObject(my, sjson);
+//    TheClass my;
+//    JsonSerializationHelper::JsonToObject(my, sjson);
 
     std::string str;
-    JsonSerializationHelper::ObjectToJson(my, str, 4);
-    std::cout << str << std::endl;
-    std::cout << str.size() << std::endl;
+//    JsonSerializationHelper::ObjectToJson(my, str, 4);
+//    std::cout << str << std::endl;
+//    std::cout << str.size() << std::endl;
 
 //    std::vector<uint8_t> buf;
 //    JsonHelper::ObjectToJsonCbor(my, buf);
@@ -123,10 +123,10 @@ int main()
 //    JsonSerializationHelper::ObjectToJson(g, str, 4);
 
 
-//    Table tb;
-//    tb.vecNames = {1, 2};
-//    JsonSerializationHelper::ObjectToJson(tb, str, 4);
-//    std::cout << str << std::endl;
+    Table tb;
+    tb.vecNames = {1, 2};
+    JsonSerializationHelper::ObjectToJson(tb, str, 4);
+    std::cout << str << std::endl;
 
     return 0;
 }
