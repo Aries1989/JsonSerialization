@@ -1,9 +1,8 @@
-#if 1
-#include "AIGCJson/AIGCJson.hpp"
+#include "serialization/JsonSerializationHelper.hpp"
 #include <memory>
 
 using namespace std;
-using namespace aigc;
+using namespace cbim;
 
 class Popole
 {
@@ -11,7 +10,7 @@ public:
     string name;
     string age;
 
-    AIGC_JSON_HELPER(name, age) //成员注册
+    CBIM_JSON_HELPER(name, age)
 };
 
 class Student : Popole
@@ -19,8 +18,8 @@ class Student : Popole
 public:
     string depart;
     int grade;
-    AIGC_JSON_HELPER(depart, grade) //成员注册
-    AIGC_JSON_HELPER_BASE((Popole*)this) //基类注册
+    CBIM_JSON_HELPER(depart, grade)
+    CBIM_JSON_HELPER_BASE((Popole*)this)
 };
 
 class TheClass
@@ -34,8 +33,8 @@ public:
     std::unordered_set<float> arr;
     std::unordered_map<int, int> mapKV;
     glm::dvec2 v2;
-    AIGC_JSON_HELPER(Name, test, students, master, spContent, arr, mapKV, v2) //成员注册
-    AIGC_JSON_HELPER_DEFAULT("test=123")
+    CBIM_JSON_HELPER(Name, test, students, master, spContent, arr, mapKV, v2)
+    CBIM_JSON_HELPER_DEFAULT("test=123")
 };
 
 string sjson = R"({
@@ -80,59 +79,39 @@ string sjson = R"({
     ]
 })";
 
+struct Geo
+{
+    std::string name;
+    glm::mat4 m = glm::mat4(1.0f);
+    CBIM_JSON_HELPER(name, m)
+    CBIM_JSON_HELPER_DEFAULT(name="cube")
+};
+
 int main()
 {
     //std::cout << sjson << std::endl;
-    TheClass my;
-    JsonHelper::JsonToObject(my, sjson);
+//    TheClass my;
+//    JsonHelper::JsonToObject(my, sjson);
 
     std::string str;
-    JsonHelper::ObjectToJson(my, str);
+//    JsonHelper::ObjectToJson(my, str);
+//    std::cout << str << std::endl;
+//    std::cout << str.size() << std::endl;
+
+//    std::vector<uint8_t> buf;
+//    JsonHelper::ObjectToJsonCbor(my, buf);
+//    std::cout << buf.size() << std::endl;
+
+//    TheClass mm;
+//    JsonHelper::JsonCborToObject(mm, buf);
+//    std::cout << mm.Name << std::endl;
+
+    Geo g;
+//    g.name = "大家";
+    JsonSerializationHelper::ObjectToJson(g, str, 4);
     std::cout << str << std::endl;
 
-
-    //std::array<int, 3> arr;
-    //std::cout << arr.size();
+    Geo g0;
+    JsonSerializationHelper::JsonToObject(g0, str);
     return 0;
 }
-
-#else
-#include <iostream>
-#include "nlohmann/json.hpp"
-using json = nlohmann::json;
-
-int main()
-{
-    std::map<std::string, int> c_map{ {"one", 1}, {"two", 2}, {"three", 3} };
-
-    json j;
-    for (auto p : c_map)
-    {
-        json jv = p.second;
-        j[p.first] = jv;
-    }
-    std::cout << j << std::endl;
-
-    //json j(c_map);
-    //std::cout << j.dump(4) << std::endl;
-    //
-    //for (auto it=j.begin(); it!=j.end(); ++it)
-    //{
-    //    std::cout << it.key() << "\t" << it.value() << std::endl;
-    //}
-
-    //json j = c_map;
-    //json j;
-    //std::list obj = { 1, 2, 3, 4, 5 };
-    //for (const auto& v : obj)
-    //{
-    //    json jv = v;
-
-    //    j.push_back(jv);
-    //}
-    //std::cout << j << std::endl;
-
-    return 1;
-}
-
-#endif
