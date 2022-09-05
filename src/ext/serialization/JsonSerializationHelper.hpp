@@ -230,7 +230,6 @@ public:
             return true;
         }
 
-        //m_message = "unsupported this type.";
         LOG("unsupported this type.");
         return false;
     }
@@ -650,6 +649,28 @@ public:
         return true;
     }
 
+    inline bool JsonToObject(short &obj, json& j)
+    {
+        if (!j.is_number_integer())
+        {
+            LOG_TYPE_ERROR(obj, j)
+            return false;
+        }
+
+        return GetJsonValue(obj, j);
+    }
+
+    inline bool JsonToObject(unsigned short &obj, json& j)
+    {
+        if (!j.is_number_integer())
+        {
+            LOG_TYPE_ERROR(obj, j)
+            return false;
+        }
+
+        return GetJsonValue(obj, j);
+    }
+
     inline bool JsonToObject(int &obj, json& j)
     {
         if (!j.is_number_integer())
@@ -983,7 +1004,7 @@ public:
         static std::vector<std::string> cols = {"c0", "c1", "c2", "c3", "c4"};
         if (!j.is_object())
         {
-            LOG_TYPE_ERROR(v, j)
+            LOG_TYPE_ERROR(m, j)
             return false;
         }
 
@@ -1018,6 +1039,16 @@ public:
     {
         j = v;
         return true;
+    }
+
+    inline bool ObjectToJson(const short &obj, json& j)
+    {
+        return SetJsonValue(j, obj);
+    }
+
+    inline bool ObjectToJson(const unsigned short &obj, json& j)
+    {
+        return SetJsonValue(j, obj);
     }
 
     inline bool ObjectToJson(const int &obj, json& j)
