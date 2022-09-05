@@ -9,6 +9,8 @@
 #include <unordered_set>
 #include <unordered_map>
 
+#include "cbim_type_traits.hpp"
+
 #ifdef SUPPORT_GLM_SERIALIZATION
 #include "glm/glm.hpp"
 #endif
@@ -517,7 +519,6 @@ public:
         bool check = ObjectToJson(arg, jv);
         if (!check)
         {
-            //m_message = "[" + names[index] + "] " + m_message;
             return false;
         }
 
@@ -639,7 +640,7 @@ public:
          *          double、string、vector、list、map<string,XX>
          *
          ******************************************************/
-    bool JsonToObject(int &obj, json& j)
+    inline bool JsonToObject(int &obj, json& j)
     {
         if (!j.is_number_integer())
         {
@@ -652,7 +653,7 @@ public:
         return true;
     }
 
-    bool JsonToObject(unsigned int &obj, json& j)
+    inline bool JsonToObject(unsigned int &obj, json& j)
     {
         if (!j.is_number_unsigned())
         {
@@ -664,7 +665,7 @@ public:
         return true;
     }
 
-    bool JsonToObject(int64_t &obj, json& j)
+    inline bool JsonToObject(int64_t &obj, json& j)
     {
         if (!j.is_number_integer())
         {
@@ -676,7 +677,7 @@ public:
         return true;
     }
 
-    bool JsonToObject(uint64_t &obj, json& j)
+    inline bool JsonToObject(uint64_t &obj, json& j)
     {
         if (!j.is_number_unsigned())
         {
@@ -687,7 +688,7 @@ public:
         return true;
     }
 
-    bool JsonToObject(bool &obj, json& j)
+    inline bool JsonToObject(bool &obj, json& j)
     {
         if (!j.is_boolean())
         {
@@ -698,7 +699,7 @@ public:
         return true;
     }
 
-    bool JsonToObject(float &obj, json& j)
+    inline bool JsonToObject(float &obj, json& j)
     {
         if (!j.is_number_float())
         {
@@ -709,7 +710,7 @@ public:
         return true;
     }
 
-    bool JsonToObject(double &obj, json& j)
+    inline bool JsonToObject(double &obj, json& j)
     {
         if (!j.is_number_float())
         {
@@ -720,11 +721,12 @@ public:
         return true;
     }
 
-    bool JsonToObject(std::string &obj, json& j)
+    inline bool JsonToObject(std::string &obj, json& j)
     {
         obj = "";
-        if (j.is_null()) return true;
-        //object or number conver to string
+
+        if (j.is_null())
+            return true;
         else if (j.is_object() || j.is_number())
             obj = GetStringFromJsonValue(j);
         else if (!j.is_string())
@@ -739,7 +741,7 @@ public:
     }
 
     template <typename TYPE>
-    bool JsonToObject(std::vector<TYPE> &obj, json& j)
+    inline bool JsonToObject(std::vector<TYPE> &obj, json& j)
     {
         obj.clear();
         if (!j.is_array())
@@ -783,7 +785,7 @@ public:
     }
 
     template <typename TYPE>
-    bool JsonToObject(std::list<TYPE> &obj, json& j)
+    inline bool JsonToObject(std::list<TYPE> &obj, json& j)
     {
         obj.clear();
         if (!j.is_array())
@@ -805,7 +807,7 @@ public:
     }
 
     template <typename TYPE>
-    bool JsonToObject(std::set<TYPE>& obj, json& j)
+    inline bool JsonToObject(std::set<TYPE>& obj, json& j)
     {
         obj.clear();
         if (!j.is_array())
@@ -827,7 +829,7 @@ public:
     }
 
     template <typename TYPE>
-    bool JsonToObject(std::unordered_set<TYPE>& obj, json& j)
+    inline bool JsonToObject(std::unordered_set<TYPE>& obj, json& j)
     {
         obj.clear();
         if (!j.is_array())
@@ -849,7 +851,7 @@ public:
     }
 
     template<typename T>
-    bool GetValueByKey(json& j, const std::string& key, T& v)
+    inline bool GetValueByKey(json& j, const std::string& key, T& v)
     {
         auto it = j.find(key);
 
@@ -860,7 +862,7 @@ public:
     }
 
     template <typename KEY, typename VALUE>
-    bool JsonToObject(std::map<KEY, VALUE> &obj, json& j)
+    inline bool JsonToObject(std::map<KEY, VALUE> &obj, json& j)
     {
         obj.clear();
         if (!j.is_object())
@@ -885,7 +887,7 @@ public:
     }
 
     template <typename KEY, typename VALUE>
-    bool JsonToObject(std::unordered_map<KEY, VALUE>& obj, json& j)
+    inline bool JsonToObject(std::unordered_map<KEY, VALUE>& obj, json& j)
     {
         obj.clear();
         if (!j.is_array())
@@ -911,7 +913,7 @@ public:
     }
 
     template <typename KEY, typename VALUE>
-    bool JsonToObject(std::multimap<KEY, VALUE>& obj, json& j)
+    inline bool JsonToObject(std::multimap<KEY, VALUE>& obj, json& j)
     {
         obj.clear();
         if (!j.is_array())
@@ -938,7 +940,7 @@ public:
 
 
     template<typename TYPE>
-    bool JsonToObject(TYPE*& pObj, json& j)
+    inline bool JsonToObject(TYPE*& pObj, json& j)
     {
         if (!pObj)
         {
@@ -948,7 +950,7 @@ public:
     }
 
     template<typename TYPE>
-    bool JsonToObject(std::shared_ptr<TYPE>& spObj, json& j)
+    inline bool JsonToObject(std::shared_ptr<TYPE>& spObj, json& j)
     {
         if (!spObj)
         {
@@ -960,7 +962,7 @@ public:
 
 #ifdef SUPPORT_GLM_SERIALIZATION
     template <typename T, int N>
-    bool JsonToObject(glm::vec<N, T, glm::highp>& v, json& j)
+    inline bool JsonToObject(glm::vec<N, T, glm::highp>& v, json& j)
     {
         if (!j.is_array())
         {
@@ -978,7 +980,7 @@ public:
     }
 
     template<int C, int R, typename T>
-    bool JsonToObject(glm::mat<C, R, T, glm::highp>& m, json& j)
+   inline  bool JsonToObject(glm::mat<C, R, T, glm::highp>& m, json& j)
     {
         static std::vector<std::string> cols = {"c0", "c1", "c2", "c3", "c4"};
         if (!j.is_object())
@@ -1013,134 +1015,98 @@ public:
          *          double、string、vector、list、map<string,XX>
          *
          ******************************************************/
-    bool ObjectToJson(const int &obj, json& j)
+    template<typename T>
+    inline bool SetJsonValue(json& j, const T& v)
     {
-        j = obj;
+        j = v;
         return true;
     }
 
-    bool ObjectToJson(const unsigned int &obj, json& j)
+    inline bool ObjectToJson(const int &obj, json& j)
     {
-        j = obj;
-        return true;
+        return SetJsonValue(j, obj);
     }
 
-    bool ObjectToJson(const int64_t &obj, json& j)
+    inline bool ObjectToJson(const unsigned int &obj, json& j)
     {
-        j = obj;
-        return true;
+        return SetJsonValue(j, obj);
     }
 
-    bool ObjectToJson(const uint64_t &obj, json& j)
+    inline bool ObjectToJson(const int64_t &obj, json& j)
     {
-        j = obj;
-        return true;
+        return SetJsonValue(j, obj);
     }
 
-    bool ObjectToJson(const bool &obj, json& j)
+    inline bool ObjectToJson(const uint64_t &obj, json& j)
     {
-        j = obj;
-        return true;
+        return SetJsonValue(j, obj);
     }
 
-    bool ObjectToJson(const float &obj, json& j)
+    inline bool ObjectToJson(const bool &obj, json& j)
     {
-        j = obj;
-        return true;
+        return SetJsonValue(j, obj);
     }
 
-    bool ObjectToJson(const double &obj, json& j)
+    inline bool ObjectToJson(const float &obj, json& j)
     {
-        j = obj;
-        return true;
+        return SetJsonValue(j, obj);
     }
 
-    bool ObjectToJson(const std::string &obj, json& j)
+    inline bool ObjectToJson(const double &obj, json& j)
     {
-        j = obj;
-        return true;
+        return SetJsonValue(j, obj);
     }
 
-    template<typename TYPE>
-    bool JsonPushBack(const TYPE& v, json& j)
+    inline bool ObjectToJson(const std::string &obj, json& j)
     {
-        json jv;
-        if (!ObjectToJson(v, jv))
+        return SetJsonValue(j, obj);
+    }
+
+    template<typename LIST>
+    inline bool ListObjectToJson(const LIST& obj, json& j)
+    {
+        for (const auto& v : obj)
         {
-            return false;
-        }
+            json jv;
+            if (!ObjectToJson(v, jv)) return false;
 
-        j.push_back(jv);
+            j.push_back(std::move(jv));
+        }
         return true;
     }
 
     template <typename TYPE>
-    bool ObjectToJson(const std::vector<TYPE> &obj, json& j)
+    inline bool ObjectToJson(const std::vector<TYPE> &obj, json& j)
     {
-        for (const auto& v : obj)
-        {
-            if (!JsonPushBack(v, j))
-            {
-                return false;
-            }
-        }
-        return true;
+        return ListObjectToJson(obj, j);
     }
 
     template<typename TYPE, std::size_t N>
-    bool ObjectToJson(const std::array<TYPE, N>& obj, json& j)
+    inline bool ObjectToJson(const std::array<TYPE, N>& obj, json& j)
     {
-        for (const auto& v : obj)
-        {
-            if (!JsonPushBack(v, j))
-            {
-                return false;
-            }
-        }
-        return true;
+        return ListObjectToJson(obj, j);
     }
 
     template <typename TYPE>
-    bool ObjectToJson(const std::list<TYPE> &obj, json& j)
+    inline bool ObjectToJson(const std::list<TYPE> &obj, json& j)
     {
-        for (const auto& v : obj)
-        {
-            if (!JsonPushBack(v, j))
-            {
-                return false;
-            }
-        }
-        return true;
+        return ListObjectToJson(obj, j);
     }
 
     template <typename TYPE>
-    bool ObjectToJson(const std::set<TYPE>& obj, json& j)
+    inline bool ObjectToJson(const std::set<TYPE>& obj, json& j)
     {
-        for (const auto& v : obj)
-        {
-            if (!JsonPushBack(v, j))
-            {
-                return false;
-            }
-        }
-        return true;
+        return ListObjectToJson(obj, j);
     }
 
     template <typename TYPE>
-    bool ObjectToJson(const std::unordered_set<TYPE>& obj, json& j)
+    inline bool ObjectToJson(const std::unordered_set<TYPE>& obj, json& j)
     {
-        for (const auto& v : obj)
-        {
-            if (!JsonPushBack(v, j))
-            {
-                return false;
-            }
-        }
-        return true;
+        return ListObjectToJson(obj, j);
     }
 
-    template <typename KEY_TYPE, typename VALUE_TYPE>
-    bool ObjectToJson(const std::map<KEY_TYPE, VALUE_TYPE> &obj, json& j)
+    template<typename MAP>
+    inline bool MapObjectToJson(const MAP& obj, json& j)
     {
         for (const auto& p : obj)
         {
@@ -1161,49 +1127,25 @@ public:
     }
 
     template <typename KEY_TYPE, typename VALUE_TYPE>
-    bool ObjectToJson(const std::unordered_map<KEY_TYPE, VALUE_TYPE>& obj, json& j)
+    inline bool ObjectToJson(const std::map<KEY_TYPE, VALUE_TYPE> &obj, json& j)
     {
-        for (const auto& p : obj)
-        {
-            json jPair;
+        return MapObjectToJson(obj, j);
+    }
 
-            json jk;
-            if (!ObjectToJson(p.first, jk)) return false;
-            jPair["key"] = jk;
-
-            json jv;
-            if (!ObjectToJson(p.second, jv)) return false;
-            jPair["value"] = jv;
-
-            j.push_back(jPair);
-        }
-
-        return true;
+    template <typename KEY_TYPE, typename VALUE_TYPE>
+    inline bool ObjectToJson(const std::unordered_map<KEY_TYPE, VALUE_TYPE>& obj, json& j)
+    {
+        return MapObjectToJson(obj, j);
     }
 
     template <typename KEY, typename VALUE>
-    bool ObjectToJson(const std::multimap<KEY, VALUE>& obj, json& j)
+    inline bool ObjectToJson(const std::multimap<KEY, VALUE>& obj, json& j)
     {
-        for (const auto& p : obj)
-        {
-            json jPair;
-
-            json jk;
-            if (!ObjectToJson(p.first, jk)) return false;
-            jPair["key"] = jk;
-
-            json jv;
-            if (!ObjectToJson(p.second, jv)) return false;
-            jPair["value"] = jv;
-
-            j.push_back(jPair);
-        }
-
-        return true;
+        return MapObjectToJson(obj, j);
     }
 
     template <typename TYPE>
-    bool ObjectToJson(TYPE* pObj, json& j)
+    inline bool ObjectToJson(TYPE* pObj, json& j)
     {
         if (!pObj)
         {
@@ -1215,7 +1157,7 @@ public:
     }
 
     template <typename TYPE>
-    bool ObjectToJson(const std::shared_ptr<TYPE>& spObj, json& j)
+    inline bool ObjectToJson(const std::shared_ptr<TYPE>& spObj, json& j)
     {
         if (!spObj)
         {
@@ -1228,21 +1170,16 @@ public:
 
 #ifdef SUPPORT_GLM_SERIALIZATION
     template <typename T, int N>
-    bool ObjectToJson(const glm::vec<N, T, glm::highp>& v, json& j)
+    inline bool ObjectToJson(const glm::vec<N, T, glm::highp>& v, json& j)
     {
-        static std::vector<std::string> keys = {"x", "y", "z", "w"};
-        assert(N <= keys.size());
-
-        for (int i = 0; i < N; ++i) {
-//            j[keys[i]] = v[i];
+        for (int i = 0; i < N; ++i)
             j.push_back(v[i]);
-        }
 
         return true;
     }
 
     template<int C, int R, typename T>
-    bool ObjectToJson(const glm::mat<C, R, T, glm::highp>& m, json& j)
+    inline bool ObjectToJson(const glm::mat<C, R, T, glm::highp>& m, json& j)
     {
         static std::vector<std::string> cols = {"c0", "c1", "c2", "c3", "c4"};
         assert(C <= cols.size());
@@ -1250,10 +1187,11 @@ public:
         for (int i=0; i<C; ++i)
         {
             const auto& col_v = m[i];
+
             json jc;
             if (!ObjectToJson(col_v, jc)) return false;
 
-            j[cols[i]] = jc;
+            j[cols[i]] = std::move(jc);
         }
 
         return true;
