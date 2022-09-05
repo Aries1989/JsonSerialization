@@ -848,8 +848,19 @@ public:
         return true;
     }
 
-    template <typename KEY_TYPE, typename VALUE_TYPE>
-    bool JsonToObject(std::map<KEY_TYPE, VALUE_TYPE> &obj, json& j)
+    template<typename T>
+    bool GetValueByKey(json& j, const std::string& key, T& v)
+    {
+        auto it = j.find(key);
+
+        if (it == j.end()) return false;
+        if (!JsonToObject(v, it.value())) return false;
+
+        return true;
+    }
+
+    template <typename KEY, typename VALUE>
+    bool JsonToObject(std::map<KEY, VALUE> &obj, json& j)
     {
         obj.clear();
         if (!j.is_object())
@@ -862,25 +873,19 @@ public:
         {
             json jPair = *it;
 
-            KEY_TYPE k;
-            if (!JsonToObject(k, jPair["key"]))
-            {
-                return false;
-            }
+            KEY k;
+            if (!GetValueByKey(jPair, "key", k)) return false;
 
-            VALUE_TYPE v;
-            if (!JsonToObject(v, jPair["value"]))
-            {
-                return false;
-            }
+            VALUE v;
+            if (!GetValueByKey(jPair, "value", v)) return false;
 
-            obj.insert(std::pair<KEY_TYPE, VALUE_TYPE>(std::move(k), std::move(v)));
+            obj.insert(std::pair<KEY, VALUE>(std::move(k), std::move(v)));
         }
         return true;
     }
 
-    template <typename KEY_TYPE, typename VALUE_TYPE>
-    bool JsonToObject(std::unordered_map<KEY_TYPE, VALUE_TYPE>& obj, json& j)
+    template <typename KEY, typename VALUE>
+    bool JsonToObject(std::unordered_map<KEY, VALUE>& obj, json& j)
     {
         obj.clear();
         if (!j.is_array())
@@ -893,35 +898,44 @@ public:
         {
             json jPair = *it;
 
-            auto itKey = jPair.find("key");
-            if (itKey == jPair.end())
-            {
-                return false;
-            }
+            KEY k;
+            if (!GetValueByKey(jPair, "key", k)) return false;
 
-            KEY_TYPE k;
-            if (!JsonToObject(k, itKey.value()))
-            {
-                return false;
-            }
+            VALUE v;
+            if (!GetValueByKey(jPair, "value", v)) return false;
 
 
-            auto itValue = jPair.find("value");
-            if (itValue == jPair.end())
-            {
-                return false;
-            }
-
-            VALUE_TYPE v;
-            if (!JsonToObject(v, itValue.value()))
-            {
-                return false;
-            }
-
-            obj.insert(std::pair<KEY_TYPE, VALUE_TYPE>(std::move(k), std::move(v)));
+            obj.insert(std::pair<KEY, VALUE>(std::move(k), std::move(v)));
         }
         return true;
     }
+
+    template <typename KEY, typename VALUE>
+    bool JsonToObject(std::multimap<KEY, VALUE>& obj, json& j)
+    {
+        obj.clear();
+        if (!j.is_array())
+        {
+            LOG("json-value is " + std::string(j.type_name()) + " but object is " + typeid(obj).name());
+            return false;
+        }
+
+        for (auto it = j.begin(); it != j.end(); ++it)
+        {
+            json jPair = *it;
+
+            KEY k;
+            if (!GetValueByKey(jPair, "key", k)) return false;
+
+            VALUE v;
+            if (!GetValueByKey(jPair, "value", v)) return false;
+
+
+            obj.insert(std::pair<KEY, VALUE>(std::move(k), std::move(v)));
+        }
+        return true;
+    }
+
 
     template<typename TYPE>
     bool JsonToObject(TYPE*& pObj, json& j)
@@ -1148,6 +1162,27 @@ public:
 
     template <typename KEY_TYPE, typename VALUE_TYPE>
     bool ObjectToJson(const std::unordered_map<KEY_TYPE, VALUE_TYPE>& obj, json& j)
+    {
+        for (const auto& p : obj)
+        {
+            json jPair;
+
+            json jk;
+            if (!ObjectToJson(p.first, jk)) return false;
+            jPair["key"] = jk;
+
+            json jv;
+            if (!ObjectToJson(p.second, jv)) return false;
+            jPair["value"] = jv;
+
+            j.push_back(jPair);
+        }
+
+        return true;
+    }
+
+    template <typename KEY, typename VALUE>
+    bool ObjectToJson(const std::multimap<KEY, VALUE>& obj, json& j)
     {
         for (const auto& p : obj)
         {
