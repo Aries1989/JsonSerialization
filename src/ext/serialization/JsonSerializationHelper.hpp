@@ -1,22 +1,3 @@
-/**
- * Copyright (C) 2020 - 2021, Yaronzz(yaronhuang@foxmail.com). All rights reserved.
- * 
- * Licensed under the MIT License (the "License"); you may not use this file except
- * in compliance with the License. You may obtain a copy of the License at
- * 
- * http://opensource.org/licenses/MIT
- * 
- * Unless required by applicable law or agreed to in writing, software distributed
- * under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
- * CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- * 
- * @author: yaronzz
- * @email:  yaronhuang@foxmail.com
- * @github: https://github.com/yaronzz
- * @note:   Support type -->> int、uint、int64、uint64、bool、float、double、string、vector、list、map<string,XX>
- * 
- */
 #pragma once
 #include <set>
 #include <list>
@@ -48,16 +29,16 @@ void LOG(const std::string& log)
  * {
  *      string A;
  *      string B;
- *      AIGC_JSON_HELPER(A, B)
+ *      CBIM_JSON_HELPER(A, B)
  * };         
  * 反序列化
  * jsonValue：最后返回的json对象
- * names: 表示使用AIGC_JSON_HELPER_RENAME宏，重命名后的成员变量名
+ * names: 表示使用CBIM_JSON_HELPER_RENAME宏，重命名后的成员变量名
  * standardNames：表示将成员变量名称作为name的情况
  ******************************************************/
-#define AIGC_JSON_HELPER(...)                                                            \
-    std::map<std::string, std::string> __aigcDefaultValues;                              \
-    bool AIGCJsonToObject(aigc::JsonHelperPrivate &handle,                               \
+#define CBIM_JSON_HELPER(...)                                                            \
+    std::map<std::string, std::string> __defaultValues;                                  \
+    bool CbimJsonToObject(cbim::JsonHelperPrivate &handle,                               \
                           json& j,                                                       \
                           std::vector<std::string> &names)                               \
     {                                                                                    \
@@ -67,9 +48,9 @@ void LOG(const std::string& log)
             for (size_t i = names.size(); i < standardNames.size(); i++)                 \
                 names.push_back(standardNames[i]);                                       \
         }                                                                                \
-        return handle.SetMembers(names, 0, j, __aigcDefaultValues, __VA_ARGS__);         \
+        return handle.SetMembers(names, 0, j, __defaultValues, __VA_ARGS__);             \
     }                                                                                    \
-    bool AIGCObjectToJson(aigc::JsonHelperPrivate &handle,                               \
+    bool CbimObjectToJson(cbim::JsonHelperPrivate &handle,                               \
                           json& j,                                                       \
                           std::vector<std::string> &names) const                         \
     {                                                                                    \
@@ -89,12 +70,12 @@ void LOG(const std::string& log)
  * {
  *      string A;
  *      string B;
- *      AIGC_JSON_HELPER(A, B)
- *      AIGC_JSON_HELPER_RENAME("a", "b")
+ *      CBIM_JSON_HELPER(A, B)
+ *      CBIM_JSON_HELPER_RENAME("a", "b")
  * };         
  ******************************************************/
-#define AIGC_JSON_HELPER_RENAME(...)                                            \
-    std::vector<std::string> AIGCRenameMembers(aigc::JsonHelperPrivate &handle) \
+#define CBIM_JSON_HELPER_RENAME(...)                                            \
+    std::vector<std::string> CbimRenameMembers(cbim::JsonHelperPrivate &handle) \
     {                                                                           \
         return handle.GetMembersNames(#__VA_ARGS__);                            \
     }
@@ -105,22 +86,22 @@ void LOG(const std::string& log)
  * struct Base
  * {
  *      string name;
- *      AIGC_JSON_HELPER(name)
+ *      CBIM_JSON_HELPER(name)
  * };  
  * struct Test : Base
  * {
  *      string A;
  *      string B;
- *      AIGC_JSON_HELPER(A, B)
- *      AIGC_JSON_HELPER_BASE((Base*)this)
+ *      CBIM_JSON_HELPER(A, B)
+ *      CBIM_JSON_HELPER_BASE((Base*)this)
  * };         
  ******************************************************/
-#define AIGC_JSON_HELPER_BASE(...)                                           \
-    bool AIGCBaseJsonToObject(aigc::JsonHelperPrivate &handle, json& j)      \
+#define CBIM_JSON_HELPER_BASE(...)                                           \
+    bool CbimBaseJsonToObject(cbim::JsonHelperPrivate &handle, json& j)      \
     {                                                                        \
         return handle.SetBase(j, __VA_ARGS__);                               \
     }                                                                        \
-    bool AIGCBaseObjectToJson(aigc::JsonHelperPrivate &handle, json& j) const\
+    bool CbimBaseObjectToJson(cbim::JsonHelperPrivate &handle, json& j) const\
     {                                                                        \
         return handle.GetBase(j, __VA_ARGS__);                               \
     }
@@ -132,17 +113,20 @@ void LOG(const std::string& log)
  * {
  *      string name;
  *      int age;
- *      AIGC_JSON_HELPER(name, age)
- *      AIGC_JSON_HELPER_DEFAULT(age=18)
+ *      CBIM_JSON_HELPER(name, age)
+ *      CBIM_JSON_HELPER_DEFAULT(age=18)
  * };  
+ * 新增成员变量后，如果想使用已有的json字符串反序列化对象，
+ * 新增的成员变量肯定是无法解析到，此时，可以使用改宏，为
+ * 新增的变量设置默认值。
  ******************************************************/
-#define AIGC_JSON_HELPER_DEFAULT(...)                                  \
-    void AIGCDefaultValues(aigc::JsonHelperPrivate &handle)            \
+#define CBIM_JSON_HELPER_DEFAULT(...)                                  \
+    void CbimDefaultValues(cbim::JsonHelperPrivate &handle)            \
     {                                                                  \
-        __aigcDefaultValues = handle.GetMembersValueMap(#__VA_ARGS__); \
+        __defaultValues = handle.GetMembersValueMap(#__VA_ARGS__); \
     }
 
-namespace aigc
+namespace cbim
 {
 class JsonHelperPrivate
 {
@@ -152,13 +136,11 @@ public:
          * enable_if
          *
          ******************************************************/
-    // 主模版
     template <bool, class TYPE = void>
     struct enable_if
     {
     };
 
-    // 偏特化模版
     template <class TYPE>
     struct enable_if<true, TYPE>
     {
@@ -169,7 +151,7 @@ public:
     /******************************************************
          * 
          * Check Interface
-         *      If class or struct add AIGC_JSON_HELPER\AIGC_JSON_HELPER_RENAME\AIGC_JSON_HELPER_BASE,
+         *      If class or struct add CBIM_JSON_HELPER\CBIM_JSON_HELPER_RENAME\CBIM_JSON_HELPER_BASE,
          *      it will go to the correct conver function.
          *
          ******************************************************/
@@ -177,7 +159,7 @@ public:
     struct HasConverFunction
     {
         template <typename TT>
-        static char func(decltype(&TT::AIGCJsonToObject));
+        static char func(decltype(&TT::CbimJsonToObject));
 
         template <typename TT>
         static int func(...);
@@ -189,7 +171,7 @@ public:
     struct HasRenameFunction
     {
         template <typename TT>
-        static char func(decltype(&TT::AIGCRenameMembers));
+        static char func(decltype(&TT::CbimRenameMembers));
         template <typename TT>
         static int func(...);
         const static bool has = (sizeof(func<T>(NULL)) == sizeof(char));
@@ -199,7 +181,7 @@ public:
     struct HasBaseConverFunction
     {
         template <typename TT>
-        static char func(decltype(&TT::AIGCBaseJsonToObject));
+        static char func(decltype(&TT::CbimBaseJsonToObject));
         template <typename TT>
         static int func(...);
         const static bool has = (sizeof(func<T>(NULL)) == sizeof(char));
@@ -209,7 +191,7 @@ public:
     struct HasDefaultValueFunction
     {
         template <typename TT>
-        static char func(decltype(&TT::AIGCDefaultValues));
+        static char func(decltype(&TT::CbimDefaultValues));
         template <typename TT>
         static int func(...);
         const static bool has = (sizeof(func<T>(NULL)) == sizeof(char));
@@ -230,7 +212,7 @@ public:
 
         LoadDefaultValuesMap(obj);
         std::vector<std::string> names = LoadRenameArray(obj);
-        return obj.AIGCJsonToObject(*this, j, names);
+        return obj.CbimJsonToObject(*this, j, names);
     }
 
     template <typename T, typename enable_if<!HasConverFunction<T>::has, int>::type = 0>
@@ -261,7 +243,7 @@ public:
 
         std::vector<std::string> names = LoadRenameArray(obj);
         // 类对象obj的序列化
-        return obj.AIGCObjectToJson(*this, j, names);
+        return obj.CbimObjectToJson(*this, j, names);
     }
 
     // 枚举类型的序列化进行单独处理
@@ -290,7 +272,7 @@ public:
     template <typename T, typename enable_if<HasRenameFunction<T>::has, int>::type = 0>
     std::vector<std::string> LoadRenameArray(const T &obj)
     {
-        return obj.AIGCRenameMembers(*this);
+        return obj.CbimRenameMembers(*this);
     }
 
     template <typename T, typename enable_if<!HasRenameFunction<T>::has, int>::type = 0>
@@ -311,7 +293,7 @@ public:
     template <typename T, typename enable_if<HasBaseConverFunction<T>::has, int>::type = 0>
     bool BaseConverJsonToObject(T &obj, json& j)
     {
-        return obj.AIGCBaseJsonToObject(*this, j);
+        return obj.CbimBaseJsonToObject(*this, j);
     }
 
     // 过滤!HasBaseConverFunction的对象,直接返回true
@@ -328,7 +310,7 @@ public:
     template <typename T, typename enable_if<HasBaseConverFunction<T>::has, int>::type = 0>
     bool BaseConverObjectToJson(const T &obj, json& j)
     {
-        return obj.AIGCBaseObjectToJson(*this, j);
+        return obj.CbimBaseObjectToJson(*this, j);
     }
 
     // 过滤!HasBaseConverFunction的对象,直接返回true
@@ -351,7 +333,7 @@ public:
     template <typename T, typename enable_if<HasDefaultValueFunction<T>::has, int>::type = 0>
     void LoadDefaultValuesMap(T &obj)
     {
-        obj.AIGCDefaultValues(*this);
+        obj.CbimDefaultValues(*this);
     }
 
     // 过滤!HasDefaultValueFunction的对象，直接返回true
@@ -421,13 +403,6 @@ public:
 
     static std::string GetStringFromJsonValue(json& j)
     {
-        //rapidjson::StringBuffer buffer;
-        //rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-
-        //jsonValue.Accept(writer);
-        //std::string ret = std::string(buffer.GetString());
-        //return ret;
-
         return j.dump();
     }
 
@@ -446,14 +421,14 @@ public:
         * Set class/struct members value
         *
         ******************************************************/
-    std::vector<std::string> GetMembersNames(const std::string membersStr)
+    std::vector<std::string> GetMembersNames(const std::string& membersStr)
     {
         std::vector<std::string> array = StringSplit(membersStr);
         StringTrim(array);
         return array;
     }
 
-    std::map<std::string, std::string> GetMembersValueMap(const std::string valueStr)
+    std::map<std::string, std::string> GetMembersValueMap(const std::string& valueStr)
     {
         std::vector<std::string> array = StringSplit(valueStr);
         std::map<std::string, std::string> ret;
@@ -606,7 +581,7 @@ public:
          *
          ******************************************************/
     template <typename TYPE>
-    void StringToObject(TYPE &obj, std::string &value)
+    void StringToObject(TYPE &obj, const std::string &value)
     {
         UN_USED(value);
         UN_USED(obj);
@@ -614,45 +589,45 @@ public:
         return;
     }
 
-    void StringToObject(std::string &obj, std::string &value)
+    void StringToObject(std::string &obj, const std::string &value)
     {
         obj = value;
     }
 
-    void StringToObject(int &obj, std::string &value)
+    void StringToObject(int &obj, const std::string &value)
     {
         obj = atoi(value.c_str());
     }
 
-    void StringToObject(unsigned int &obj, std::string &value)
+    void StringToObject(unsigned int &obj, const std::string &value)
     {
         char *end;
         obj = strtoul(value.c_str(), &end, 10);
     }
 
-    void StringToObject(int64_t &obj, std::string &value)
+    void StringToObject(int64_t &obj, const std::string &value)
     {
         char *end;
         obj = strtoll(value.c_str(), &end, 10);
     }
 
-    void StringToObject(uint64_t &obj, std::string &value)
+    void StringToObject(uint64_t &obj, const std::string &value)
     {
         char *end;
         obj = strtoull(value.c_str(), &end, 10);
     }
 
-    void StringToObject(bool &obj, std::string &value)
+    void StringToObject(bool &obj, const std::string &value)
     {
         obj = (value == "true");
     }
 
-    void StringToObject(float &obj, std::string &value)
+    void StringToObject(float &obj, const std::string &value)
     {
         obj = (float)atof(value.c_str());
     }
 
-    void StringToObject(double &obj, std::string &value)
+    void StringToObject(double &obj, const std::string &value)
     {
         obj = atof(value.c_str());
     }
@@ -748,8 +723,7 @@ public:
     bool JsonToObject(std::string &obj, json& j)
     {
         obj = "";
-        if (j.is_null())
-            return true;
+        if (j.is_null()) return true;
         //object or number conver to string
         else if (j.is_object() || j.is_number())
             obj = GetStringFromJsonValue(j);
@@ -781,7 +755,7 @@ public:
             {
                 return false;
             }
-            obj.push_back(item);
+            obj.push_back(std::move(item));
         }
         return true;
     }
@@ -804,7 +778,6 @@ public:
             {
                 return false;
             }
-            //obj[i] = item;
         }
         return true;
     }
@@ -826,7 +799,7 @@ public:
             {
                 return false;
             }
-            obj.push_back(item);
+            obj.push_back(std::move(item));
         }
         return true;
     }
@@ -848,7 +821,7 @@ public:
             {
                 return false;
             }
-            obj.insert(item);
+            obj.insert(std::move(item));
         }
         return true;
     }
@@ -870,7 +843,7 @@ public:
             {
                 return false;
             }
-            obj.insert(item);
+            obj.insert(std::move(item));
         }
         return true;
     }
@@ -901,7 +874,7 @@ public:
                 return false;
             }
 
-            obj.insert(std::pair<KEY_TYPE, VALUE_TYPE>(k, v));
+            obj.insert(std::pair<KEY_TYPE, VALUE_TYPE>(std::move(k), std::move(v)));
         }
         return true;
     }
@@ -945,7 +918,7 @@ public:
                 return false;
             }
 
-            obj.insert(std::pair<KEY_TYPE, VALUE_TYPE>(k, v));
+            obj.insert(std::pair<KEY_TYPE, VALUE_TYPE>(std::move(k), std::move(v)));
         }
         return true;
     }
@@ -972,29 +945,51 @@ public:
     }
 
 #ifdef SUPPORT_GLM_SERIALIZATION
-    template <typename T>
-    bool GetValueByKey(T& v, json& j, const std::string& k)
-    {
-        auto it = j.find(k);
-        if (it == j.end()) return false;
-        if (!JsonToObject(v, it.value())) return false;
-        return true;
-    }
-
-    template <typename T, size_t N>
+    template <typename T, int N>
     bool JsonToObject(glm::vec<N, T, glm::highp>& v, json& j)
     {
-        static std::vector<std::string> keys = {"x", "y", "z", "w"};
-        assert(N <= keys.size());
-
-        for (int i = 0; i < N; ++i)
+        if (!j.is_array())
         {
-            if(!GetValueByKey(v[i], j, keys[i])) return false;
+            LOG("json-value is " + std::string(j.type_name()) + " but object is " + typeid(v).name());
+            return false;
+        }
+
+        assert(N == j.size());
+        for (int i=0; i<j.size(); ++i)
+        {
+            if (!JsonToObject(v[i], j[i])) return false;
         }
 
         return true;
     }
 
+    template<int C, int R, typename T>
+    bool JsonToObject(glm::mat<C, R, T, glm::highp>& m, json& j)
+    {
+        static std::vector<std::string> cols = {"c0", "c1", "c2", "c3", "c4"};
+        if (!j.is_object())
+        {
+            LOG("json-value is " + std::string(j.type_name()) + " but object is " + typeid(m).name());
+            return false;
+        }
+
+        assert(C <= cols.size());
+
+        for (int i=0; i<C; ++i)
+        {
+            auto it = j.find(cols[i]);
+            if (it == j.end())
+            {
+                LOG("can not find column " + cols[i]);
+                return false;
+            }
+
+            auto& c = m[i];
+            if (!JsonToObject(c, *it)) return false;
+        }
+
+        return true;
+    }
 #endif
 
 public:
@@ -1138,18 +1133,11 @@ public:
             json jPair;
 
             json jk;
-            if (!ObjectToJson(p.first, jk))
-            {
-                return false;
-            }
+            if (!ObjectToJson(p.first, jk)) return false;
             jPair["key"] = jk;
 
             json jv;
-            if (!ObjectToJson(p.second, jv))
-            {
-                return false;
-            }
-
+            if (!ObjectToJson(p.second, jv)) return false;
             jPair["value"] = jv;
 
             j.push_back(jPair);
@@ -1166,18 +1154,11 @@ public:
             json jPair;
 
             json jk;
-            if (!ObjectToJson(p.first, jk))
-            {
-                return false;
-            }
+            if (!ObjectToJson(p.first, jk)) return false;
             jPair["key"] = jk;
 
             json jv;
-            if (!ObjectToJson(p.second, jv))
-            {
-                return false;
-            }
-
+            if (!ObjectToJson(p.second, jv)) return false;
             jPair["value"] = jv;
 
             j.push_back(jPair);
@@ -1211,14 +1192,33 @@ public:
     }
 
 #ifdef SUPPORT_GLM_SERIALIZATION
-    template <typename T, size_t N>
+    template <typename T, int N>
     bool ObjectToJson(const glm::vec<N, T, glm::highp>& v, json& j)
     {
         static std::vector<std::string> keys = {"x", "y", "z", "w"};
         assert(N <= keys.size());
 
         for (int i = 0; i < N; ++i) {
-            j[keys[i]] = v[i];
+//            j[keys[i]] = v[i];
+            j.push_back(v[i]);
+        }
+
+        return true;
+    }
+
+    template<int C, int R, typename T>
+    bool ObjectToJson(const glm::mat<C, R, T, glm::highp>& m, json& j)
+    {
+        static std::vector<std::string> cols = {"c0", "c1", "c2", "c3", "c4"};
+        assert(C <= cols.size());
+
+        for (int i=0; i<C; ++i)
+        {
+            const auto& col_v = m[i];
+            json jc;
+            if (!ObjectToJson(col_v, jc)) return false;
+
+            j[cols[i]] = jc;
         }
 
         return true;
@@ -1226,23 +1226,15 @@ public:
 #endif
 };
 
-class JsonHelper
+class JsonSerializationHelper
 {
 public:
-    /**
-         * @brief conver json string to class | struct
-         * @param obj : class or struct
-         * @param jsonStr : json string 
-         * @param keys : the path of the object
-         * @param message : printf err message when conver failed
-         */
     template <typename T>
-    static bool JsonToObject(T &obj, const std::string &jsonStr, const std::vector<std::string> keys = {})
+    static bool JsonToObject(T &obj, json& j, const std::vector<std::string> keys = {})
     {
-        json j = json::parse(jsonStr);
         if (j.is_null())
         {
-            LOG("Json string can't parse.");
+            LOG("invalid json string.");
             return false;
         }
 
@@ -1264,7 +1256,6 @@ public:
             j = *it;
         }
 
-        //Conver
         JsonHelperPrivate handle;
         if (!handle.JsonToObject(obj, j))
         {
@@ -1272,19 +1263,30 @@ public:
         }
         return true;
     }
+    /**
+         * @brief conver json string to class | struct
+         * @param obj : class or struct
+         * @param jsonStr : json string 
+         * @param keys : the path of the object
+         */
+    template <typename T>
+    static bool JsonToObject(T &obj, const std::string &jsonStr, const std::vector<std::string> keys = {})
+    {
+        json j = json::parse(jsonStr);
+        return JsonToObject(obj, j, keys);
+    }
 
     /**
          * @brief conver json string to class | struct
          * @param jsonStr : json string
          * @param defaultT : default value
          * @param keys : the path of the object
-         * @param message : printf err message when conver failed
          */
     template <typename T>
-    static T Get(const std::string &jsonStr, T defaultT, const std::vector<std::string> keys = {}, std::string *message = NULL)
+    static T Get(const std::string &jsonStr, T defaultT, const std::vector<std::string> keys = {})
     {
         T obj;
-        if (JsonToObject(obj, jsonStr, keys, message))
+        if (JsonToObject(obj, jsonStr, keys))
             return obj;
 
         return defaultT;
@@ -1292,24 +1294,42 @@ public:
 
     /**
          * @brief conver class | struct to json string 
-         * @param errMessage : printf err message when conver failed
          * @param obj : class or struct
          * @param jsonStr : json string 
+         * @param indent ：json string indent
          */
     template <typename T>
-    static bool ObjectToJson(const T &obj, std::string &jsonStr)
+    static bool ObjectToJson(const T &obj, std::string &jsonStr, const int indent=-1)
     {
         json j;
-        //Conver
         JsonHelperPrivate handle;
         if (!handle.ObjectToJson(obj, j))
         {
             return false;
         }
 
-        jsonStr = j.dump(4);
+        jsonStr = j.dump(indent);
+        return true;
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    template<typename T>
+    static bool JsonCborToObject(T& obj, const std::vector<uint8_t>& buf, const std::vector<std::string> keys = {})
+    {
+        json j = json::from_cbor(buf);
+        return JsonToObject(obj, j, keys);
+    }
+
+    template<typename T>
+    static bool ObjectToJsonCbor(const T& obj, std::vector<uint8_t>& buf)
+    {
+        json j;
+        JsonHelperPrivate handle;
+        if (!handle.ObjectToJson(obj, j)) return false;
+
+        json::to_cbor(j, buf);
         return true;
     }
 };
 
-} // namespace aigc
+} // namespace cbim
