@@ -640,85 +640,85 @@ public:
          *          double、string、vector、list、map<string,XX>
          *
          ******************************************************/
+#define LOG_TYPE_ERROR(obj, j) \
+    LOG("json-value is " + std::string(j.type_name()) + " but object is " + typeid(obj).name() + ".");
+
+    template<typename T>
+    inline bool GetJsonValue(T& obj, json& j)
+    {
+        obj = j.get<T>();
+        return true;
+    }
+
     inline bool JsonToObject(int &obj, json& j)
     {
         if (!j.is_number_integer())
         {
-            
-            LOG("json-value is " + std::string(j.type_name()) + " but object is int.");
-
+            LOG_TYPE_ERROR(obj, j)
             return false;
         }
-        obj = j.get<int>();
-        return true;
+
+        return GetJsonValue(obj, j);
     }
 
     inline bool JsonToObject(unsigned int &obj, json& j)
     {
         if (!j.is_number_unsigned())
         {
-            LOG("json-value is " + std::string(j.type_name()) + " but object is unsigned int.");
-
+            LOG_TYPE_ERROR(obj, j)
             return false;
         }
-        obj = j.get<unsigned int>();
-        return true;
+        return GetJsonValue(obj, j);
     }
 
     inline bool JsonToObject(int64_t &obj, json& j)
     {
         if (!j.is_number_integer())
         {
-            LOG("json-value is " + std::string(j.type_name()) + " but object is int64_t.");
-
+            LOG_TYPE_ERROR(obj, j)
             return false;
         }
-        obj = j.get<int64_t>();
-        return true;
+        return GetJsonValue(obj, j);
     }
 
     inline bool JsonToObject(uint64_t &obj, json& j)
     {
         if (!j.is_number_unsigned())
         {
-            LOG("json-value is " + std::string(j.type_name()) + " but object is uint64_t.");
+            LOG_TYPE_ERROR(obj, j)
             return false;
         }
-        obj = j.get<uint64_t>();
-        return true;
+        return GetJsonValue(obj, j);
     }
 
     inline bool JsonToObject(bool &obj, json& j)
     {
         if (!j.is_boolean())
         {
-            LOG("json-value is " + std::string(j.type_name()) + " but object is bool.");
+            LOG_TYPE_ERROR(obj, j)
             return false;
         }
-        obj = j.get<bool>();
-        return true;
+        return GetJsonValue(obj, j);
     }
 
     inline bool JsonToObject(float &obj, json& j)
     {
         if (!j.is_number_float())
         {
-            LOG("json-value is " + std::string(j.type_name()) + " but object is float.");
+            LOG_TYPE_ERROR(obj, j)
             return false;
         }
-        obj = j.get<float>();
-        return true;
+        return GetJsonValue(obj, j);
     }
 
     inline bool JsonToObject(double &obj, json& j)
     {
         if (!j.is_number_float())
         {
-            LOG("json-value is " + std::string(j.type_name()) + " but object is double.");
+            LOG_TYPE_ERROR(obj, j)
             return false;
         }
-        obj = j.get<double>();
-        return true;
+        return GetJsonValue(obj, j);
     }
 
     inline bool JsonToObject(std::string &obj, json& j)
@@ -731,11 +731,11 @@ public:
             obj = GetStringFromJsonValue(j);
         else if (!j.is_string())
         {
-            LOG("json-value is " + std::string(j.type_name()) + " but object is string.");
+            LOG_TYPE_ERROR(obj, j)
             return false;
         }
         else
-            obj = j.get<std::string>();
+            GetJsonValue(obj, j);
 
         return true;
     }
@@ -746,17 +746,15 @@ public:
         obj.clear();
         if (!j.is_array())
         {
-            LOG("json-value is " + std::string(j.type_name()) + " but object is " + typeid(obj).name());
+            LOG_TYPE_ERROR(obj, j)
             return false;
         }
 
         for (auto it = j.begin(); it != j.end(); ++it)
         {
             T item;
-            if (!JsonToObject(item, *it))
-            {
-                return false;
-            }
+            if (!JsonToObject(item, *it)) return false;
+
             obj.push_back(std::move(item));
         }
         return true;
@@ -767,7 +765,7 @@ public:
     {
         if (!j.is_array())
         {
-            LOG("json-value is " + std::string(j.type_name()) + " but object is " + typeid(obj).name());
+            LOG_TYPE_ERROR(obj, j)
             return false;
         }
 
@@ -790,7 +788,7 @@ public:
         obj.clear();
         if (!j.is_array())
         {
-            LOG("json-value is " + std::string(j.type_name()) + " but object is " + typeid(obj).name());
+            LOG_TYPE_ERROR(obj, j)
             return false;
         }
 
@@ -812,7 +810,7 @@ public:
         obj.clear();
         if (!j.is_array())
         {
-            LOG("json-value is " + std::string(j.type_name()) + " but object is " + typeid(obj).name());
+            LOG_TYPE_ERROR(obj, j)
             return false;
         }
 
@@ -834,7 +832,7 @@ public:
         obj.clear();
         if (!j.is_array())
         {
-            LOG("json-value is " + std::string(j.type_name()) + " but object is " + typeid(obj).name());
+            LOG_TYPE_ERROR(obj, j)
             return false;
         }
 
@@ -867,7 +865,7 @@ public:
         obj.clear();
         if (!j.is_object())
         {
-            LOG("json-value is " + std::string(j.type_name()) + " but object is " + typeid(obj).name());
+            LOG_TYPE_ERROR(obj, j)
             return false;
         }
 
@@ -892,7 +890,7 @@ public:
         obj.clear();
         if (!j.is_array())
         {
-            LOG("json-value is " + std::string(j.type_name()) + " but object is " + typeid(obj).name());
+            LOG_TYPE_ERROR(obj, j)
             return false;
         }
 
@@ -918,7 +916,7 @@ public:
         obj.clear();
         if (!j.is_array())
         {
-            LOG("json-value is " + std::string(j.type_name()) + " but object is " + typeid(obj).name());
+            LOG_TYPE_ERROR(obj, j)
             return false;
         }
 
@@ -966,7 +964,7 @@ public:
     {
         if (!j.is_array())
         {
-            LOG("json-value is " + std::string(j.type_name()) + " but object is " + typeid(v).name());
+            LOG_TYPE_ERROR(v, j)
             return false;
         }
 
@@ -980,12 +978,12 @@ public:
     }
 
     template<int C, int R, typename T>
-   inline  bool JsonToObject(glm::mat<C, R, T, glm::highp>& m, json& j)
+    inline bool JsonToObject(glm::mat<C, R, T, glm::highp>& m, json& j)
     {
         static std::vector<std::string> cols = {"c0", "c1", "c2", "c3", "c4"};
         if (!j.is_object())
         {
-            LOG("json-value is " + std::string(j.type_name()) + " but object is " + typeid(m).name());
+            LOG_TYPE_ERROR(v, j)
             return false;
         }
 
