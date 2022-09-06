@@ -40,6 +40,7 @@ void LOG(const std::string& log)
  * standardNames：表示将成员变量名称作为name的情况
  ******************************************************/
 #define CBIM_JSON_HELPER(...)                                                            \
+    friend cbim::JsonHelperPrivate;                                                      \
     std::map<std::string, std::string> __defaultValues;                                  \
     bool CbimJsonToObject(cbim::JsonHelperPrivate &handle,                               \
                           json& j,                                                       \
