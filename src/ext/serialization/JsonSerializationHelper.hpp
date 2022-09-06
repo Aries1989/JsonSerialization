@@ -1269,8 +1269,8 @@ public:
     }
 
 #ifdef SUPPORT_GLM_SERIALIZATION
-    template <typename T, int N>
-    inline bool ObjectToJson(const glm::vec<N, T, glm::highp>& v, json& j)
+    template <typename T, int N, glm::precision P>
+    inline bool ObjectToJson(const glm::vec<N, T, P>& v, json& j)
     {
         for (int i = 0; i < N; ++i)
             j.push_back(v[i]);
@@ -1278,8 +1278,8 @@ public:
         return true;
     }
 
-    template<int C, int R, typename T>
-    inline bool ObjectToJson(const glm::mat<C, R, T, glm::highp>& m, json& j)
+    template<int C, int R, typename T, glm::precision P>
+    inline bool ObjectToJson(const glm::mat<C, R, T, P>& m, json& j)
     {
         static std::vector<std::string> cols = {"c0", "c1", "c2", "c3", "c4"};
         assert(C <= cols.size());
