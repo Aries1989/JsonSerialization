@@ -4,6 +4,7 @@
 #include <map>
 #include <array>
 #include <vector>
+#include <tuple>
 #include <string>
 #include <iostream>
 #include <unordered_set>
@@ -795,10 +796,7 @@ public:
         for (auto it = j.begin(); it != j.end(); ++it, ++i)
         {
             T& item = obj[i];
-            if (!JsonToObject(item, *it))
-            {
-                return false;
-            }
+            if (!JsonToObject(item, *it)) return false;
         }
         return true;
     }
@@ -978,6 +976,39 @@ public:
 
         return JsonToObject(*spObj, j);
     }
+
+    template<typename A, typename B>
+    inline bool JsonToObject(std::pair<A, B>& obj, json& j)
+    {
+        if (!j.is_array())
+        {
+            LOG_TYPE_ERROR(obj, j);
+            return false;
+        }
+
+        assert(2 == j.size());
+
+        auto& a = obj.first;
+        if (!JsonToObject(a, j[0])) return false;
+        auto& b = obj.second;
+        if (!JsonToObject(b, j[1])) return false;
+
+        return true;
+    }
+
+    template<typename... Args>
+    inline bool JsonToObject(std::tuple<Args...>& obj, json& j)
+    {
+        if (!j.is_array()){
+            LOG_TYPE_ERROR(obj, j);
+            return false;
+        }
+
+        obj = j.get<std::tuple<Args...>>();
+        return true;
+    }
+
+
 
 #ifdef SUPPORT_GLM_SERIALIZATION
     template <typename T, int N>
@@ -1195,6 +1226,27 @@ public:
         }
         
         return ObjectToJson(*spObj, j);
+    }
+
+    template<typename A, typename B>
+    inline bool ObjectToJson(const std::pair<A, B>& obj, json& j)
+    {
+        json ja;
+        if(!ObjectToJson(obj.first, ja)) return false;
+        json jb;
+        if(!ObjectToJson(obj.second, jb)) return false;
+
+        j.push_back(ja);
+        j.push_back(jb);
+
+        return true;
+    }
+
+    template<typename... T>
+    inline bool ObjectToJson(const std::tuple<T...>& obj, json& j)
+    {
+        j = json(obj);
+        return true;
     }
 
 #ifdef SUPPORT_GLM_SERIALIZATION
