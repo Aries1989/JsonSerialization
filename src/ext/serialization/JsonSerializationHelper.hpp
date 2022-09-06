@@ -1067,7 +1067,7 @@ public:
             return false;
         }
 
-        assert(4 == j.size());
+        assert(obj.length() == j.size());
         for (int i=0; i<j.size(); ++i)
         {
             if (!JsonToObject(obj[i], j[i])) return false;
