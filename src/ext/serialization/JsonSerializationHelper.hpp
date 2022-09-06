@@ -14,6 +14,7 @@
 
 #ifdef SUPPORT_GLM_SERIALIZATION
 #include "glm/glm.hpp"
+#include <glm/gtc/epsilon.hpp>
 #endif
 
 #define UN_USED(V) (void)(V)
@@ -883,7 +884,7 @@ public:
     inline bool JsonToObject(std::map<KEY, VALUE> &obj, json& j)
     {
         obj.clear();
-        if (!j.is_object())
+        if (!j.is_array())
         {
             LOG_TYPE_ERROR(obj, j)
             return false;
@@ -894,10 +895,10 @@ public:
             json jPair = *it;
 
             KEY k;
-            if (!GetValueByKey(jPair, "key", k)) return false;
+            if (!GetValueByKey(jPair, "k", k)) return false;
 
             VALUE v;
-            if (!GetValueByKey(jPair, "value", v)) return false;
+            if (!GetValueByKey(jPair, "v", v)) return false;
 
             obj.insert(std::pair<KEY, VALUE>(std::move(k), std::move(v)));
         }
@@ -919,10 +920,10 @@ public:
             json jPair = *it;
 
             KEY k;
-            if (!GetValueByKey(jPair, "key", k)) return false;
+            if (!GetValueByKey(jPair, "k", k)) return false;
 
             VALUE v;
-            if (!GetValueByKey(jPair, "value", v)) return false;
+            if (!GetValueByKey(jPair, "v", v)) return false;
 
 
             obj.insert(std::pair<KEY, VALUE>(std::move(k), std::move(v)));
@@ -945,10 +946,10 @@ public:
             json jPair = *it;
 
             KEY k;
-            if (!GetValueByKey(jPair, "key", k)) return false;
+            if (!GetValueByKey(jPair, "k", k)) return false;
 
             VALUE v;
-            if (!GetValueByKey(jPair, "value", v)) return false;
+            if (!GetValueByKey(jPair, "v", v)) return false;
 
 
             obj.insert(std::pair<KEY, VALUE>(std::move(k), std::move(v)));
@@ -1012,8 +1013,8 @@ public:
 
 
 #ifdef SUPPORT_GLM_SERIALIZATION
-    template <typename T, int N>
-    inline bool JsonToObject(glm::vec<N, T, glm::highp>& v, json& j)
+    template <typename T, int N, glm::precision P>
+    inline bool JsonToObject(glm::vec<N, T, P>& v, json& j)
     {
         if (!j.is_array())
         {
@@ -1030,8 +1031,8 @@ public:
         return true;
     }
 
-    template<int C, int R, typename T>
-    inline bool JsonToObject(glm::mat<C, R, T, glm::highp>& m, json& j)
+    template<int C, int R, typename T, glm::precision P>
+    inline bool JsonToObject(glm::mat<C, R, T, P>& m, json& j)
     {
         static std::vector<std::string> cols = {"c0", "c1", "c2", "c3", "c4"};
         if (!j.is_object())
@@ -1053,6 +1054,23 @@ public:
 
             auto& c = m[i];
             if (!JsonToObject(c, *it)) return false;
+        }
+
+        return true;
+    }
+    template<typename T, glm::precision P>
+    inline bool JsonToObject(glm::tquat<T, P>& obj, json& j)
+    {
+        if (!j.is_array())
+        {
+            LOG_TYPE_ERROR(obj, j);
+            return false;
+        }
+
+        assert(4 == j.size());
+        for (int i=0; i<j.size(); ++i)
+        {
+            if (!JsonToObject(obj[i], j[i])) return false;
         }
 
         return true;
@@ -1175,11 +1193,11 @@ public:
 
             json jk;
             if (!ObjectToJson(p.first, jk)) return false;
-            jPair["key"] = jk;
+            jPair["k"] = jk;
 
             json jv;
             if (!ObjectToJson(p.second, jv)) return false;
-            jPair["value"] = jv;
+            jPair["v"] = jv;
 
             j.push_back(jPair);
         }
@@ -1278,6 +1296,16 @@ public:
 
         return true;
     }
+
+    template<typename T, glm::precision P>
+    inline bool ObjectToJson(const glm::tquat<T, P>& obj, json& j)
+    {
+        for (int i = 0; i < obj.length(); ++i)
+            j.push_back(obj[i]);
+
+        return true;
+    }
+
 #endif
 };
 
