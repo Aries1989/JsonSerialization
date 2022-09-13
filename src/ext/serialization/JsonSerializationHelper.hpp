@@ -17,7 +17,7 @@
 #include <glm/gtc/epsilon.hpp>
 #endif
 
-#define UN_USED(V) (void)(V)
+#define CBIM_UNUSED(V) (void)(V)
 
 #include "nlohmann/json.hpp"
 using json = nlohmann::json;
@@ -41,29 +41,32 @@ void LOG(const std::string& log)
  * standardNames：表示将成员变量名称作为name的情况
  ******************************************************/
 #define CBIM_JSON_HELPER(...)                                                            \
+private:                                                                                 \
     friend cbim::JsonHelperPrivate;                                                      \
     std::map<std::string, std::string> __defaultValues;                                  \
     bool CbimJsonToObject(cbim::JsonHelperPrivate &handle,                               \
                           json& j,                                                       \
-                          std::vector<std::string> &names)                               \
+                          std::map<std::string, std::string> &reNameMaps)                \
     {                                                                                    \
-        std::vector<std::string> standardNames = handle.GetMembersNames(#__VA_ARGS__);   \
-        if (names.size() <= standardNames.size())                                        \
-        {                                                                                \
-            for (size_t i = names.size(); i < standardNames.size(); i++)                 \
-                names.push_back(standardNames[i]);                                       \
+        auto names = handle.GetMembersNames(#__VA_ARGS__);                               \
+        for (auto& name : names) {                                                       \
+            auto it = reNameMaps.find(name);                                             \
+            if (it != reNameMaps.end()) {                                                \
+                name = it->second;                                                       \
+            }                                                                            \
         }                                                                                \
         return handle.SetMembers(names, 0, j, __defaultValues, __VA_ARGS__);             \
     }                                                                                    \
     bool CbimObjectToJson(cbim::JsonHelperPrivate &handle,                               \
                           json& j,                                                       \
-                          std::vector<std::string> &names) const                         \
+                          std::map<std::string, std::string> &reNameMaps) const          \
     {                                                                                    \
-        std::vector<std::string> standardNames = handle.GetMembersNames(#__VA_ARGS__);   \
-        if (names.size() <= standardNames.size())                                        \
-        {                                                                                \
-            for (size_t i = names.size(); i < standardNames.size(); i++)               \
-                names.push_back(standardNames[i]);                                       \
+        auto names = handle.GetMembersNames(#__VA_ARGS__);                               \
+        for (auto& name : names) {                                                       \
+            auto it = reNameMaps.find(name);                                             \
+            if (it != reNameMaps.end()) {                                                \
+                name = it->second;                                                       \
+            }                                                                            \
         }                                                                                \
         return handle.GetMembers(names, 0, j, __VA_ARGS__);                              \
     }
@@ -76,13 +79,14 @@ void LOG(const std::string& log)
  *      string A;
  *      string B;
  *      CBIM_JSON_HELPER(A, B)
- *      CBIM_JSON_HELPER_RENAME("a", "b")
+ *      CBIM_JSON_HELPER_RENAME(A->"a", B->"b")
  * };         
  ******************************************************/
-#define CBIM_JSON_HELPER_RENAME(...)                                            \
-    std::vector<std::string> CbimRenameMembers(cbim::JsonHelperPrivate &handle) \
-    {                                                                           \
-        return handle.GetMembersNames(#__VA_ARGS__);                            \
+#define CBIM_JSON_HELPER_RENAME(...)                                                          \
+private:                                                                                      \
+    std::map<std::string, std::string> CbimRenameMaps(cbim::JsonHelperPrivate &handle) const  \
+    {                                                                                         \
+        return handle.GetKvMaps(#__VA_ARGS__);                                                \
     }
 
 /******************************************************
@@ -102,6 +106,7 @@ void LOG(const std::string& log)
  * };         
  ******************************************************/
 #define CBIM_JSON_HELPER_BASE(...)                                           \
+private:                                                                     \
     bool CbimBaseJsonToObject(cbim::JsonHelperPrivate &handle, json& j)      \
     {                                                                        \
         return handle.SetBase(j, __VA_ARGS__);                               \
@@ -126,9 +131,10 @@ void LOG(const std::string& log)
  * 新增的变量设置默认值。
  ******************************************************/
 #define CBIM_JSON_HELPER_DEFAULT(...)                                  \
+private:                                                               \
     void CbimDefaultValues(cbim::JsonHelperPrivate &handle)            \
     {                                                                  \
-        __defaultValues = handle.GetMembersValueMap(#__VA_ARGS__); \
+        __defaultValues = handle.GetMembersValueMap(#__VA_ARGS__);     \
     }
 
 namespace cbim
@@ -173,10 +179,10 @@ public:
     };
 
     template <typename T>
-    struct HasRenameFunction
+    struct HasRenameMapsFunction
     {
         template <typename TT>
-        static char func(decltype(&TT::CbimRenameMembers));
+        static char func(decltype(&TT::CbimRenameMaps));
         template <typename TT>
         static int func(...);
         const static bool has = (sizeof(func<T>(NULL)) == sizeof(char));
@@ -216,8 +222,8 @@ public:
             return false;
 
         LoadDefaultValuesMap(obj);
-        std::vector<std::string> names = LoadRenameArray(obj);
-        return obj.CbimJsonToObject(*this, j, names);
+        std::map<std::string, std::string> reNameMaps = LoadRenameMaps(obj);
+        return obj.CbimJsonToObject(*this, j, reNameMaps);
     }
 
     template <typename T, typename enable_if<!HasConverFunction<T>::has, int>::type = 0>
@@ -245,9 +251,9 @@ public:
         if (!BaseConverObjectToJson(obj, j))
             return false;
 
-        std::vector<std::string> names = LoadRenameArray(obj);
+        std::map<std::string, std::string> reNameMaps = LoadRenameMaps(obj);
         // 类对象obj的序列化
-        return obj.CbimObjectToJson(*this, j, names);
+        return obj.CbimObjectToJson(*this, j, reNameMaps);
     }
 
     // 枚举类型的序列化进行单独处理
@@ -268,23 +274,23 @@ public:
     }
 
     /******************************************************
-         *
-         * Interface of LoadRenameArray
-         *
-         ******************************************************/
-    // 获取重命名的成员名称
-    template <typename T, typename enable_if<HasRenameFunction<T>::has, int>::type = 0>
-    std::vector<std::string> LoadRenameArray(const T &obj)
+     *
+     * Interface of LoadRenameMaps
+     *
+     ******************************************************/
+     // 获取重命名的成员名称
+    template <typename T, typename enable_if<HasRenameMapsFunction<T>::has, int>::type = 0>
+    std::map<std::string, std::string> LoadRenameMaps(const T& obj)
     {
-        return obj.CbimRenameMembers(*this);
+        return obj.CbimRenameMaps(*this);
     }
 
-    template <typename T, typename enable_if<!HasRenameFunction<T>::has, int>::type = 0>
-    std::vector<std::string> LoadRenameArray(const T &obj)
+    template <typename T, typename enable_if<!HasRenameMapsFunction<T>::has, int>::type = 0>
+    std::map<std::string, std::string> LoadRenameMaps(const T& obj)
     {
-        UN_USED(obj);
+        CBIM_UNUSED(obj);
 
-        return std::vector<std::string>();
+        return std::map<std::string, std::string>();
     }
 
     /******************************************************
@@ -304,8 +310,8 @@ public:
     template <typename T, typename enable_if<!HasBaseConverFunction<T>::has, int>::type = 0>
     bool BaseConverJsonToObject(T &obj, json& j)
     {
-        UN_USED(j);
-        UN_USED(obj);
+        CBIM_UNUSED(j);
+        CBIM_UNUSED(obj);
 
         return true;
     }
@@ -321,8 +327,8 @@ public:
     template <typename T, typename enable_if<!HasBaseConverFunction<T>::has, int>::type = 0>
     bool BaseConverObjectToJson(const T &obj, json& j)
     {
-        UN_USED(j);
-        UN_USED(obj);
+        CBIM_UNUSED(j);
+        CBIM_UNUSED(obj);
 
         return true;
     }
@@ -364,6 +370,25 @@ public:
         {
             array.push_back(str.substr(pos1, pos2 - pos1));
             pos1 = pos2 + 1;
+            pos2 = str.find(sep, pos1);
+        }
+        if (pos1 != str.length())
+            array.push_back(str.substr(pos1));
+
+        return array;
+    }
+
+    // 字符串分割
+    static std::vector<std::string> StringSplit(const std::string &str, std::string sep = ",")
+    {
+        std::vector<std::string> array;
+        std::string::size_type pos1, pos2;
+        pos1 = 0;
+        pos2 = str.find(sep);
+        while (std::string::npos != pos2)
+        {
+            array.push_back(str.substr(pos1, pos2 - pos1));
+            pos1 = pos2 + sep.size();
             pos2 = str.find(sep, pos1);
         }
         if (pos1 != str.length())
@@ -427,14 +452,43 @@ public:
         ******************************************************/
     std::vector<std::string> GetMembersNames(const std::string& membersStr)
     {
-        std::vector<std::string> array = StringSplit(membersStr);
+        std::vector<std::string> array = StringSplit(membersStr, ',');
         StringTrim(array);
         return array;
     }
 
+    std::map<std::string, std::string> GetKvMaps(const std::string& str)
+    {
+        std::map<std::string, std::string> mapReNames;
+
+        auto vecStr = cbim::JsonHelperPrivate::StringSplit(str, ',');
+        for (const auto& s : vecStr)
+        {
+            auto tmp = cbim::JsonHelperPrivate::StringSplit(s, "->");
+            if (tmp.size() != 2)
+            {
+                throw std::runtime_error("rename key value map format error.");
+            }
+
+            for (auto& s : tmp)
+            {
+                s = cbim::JsonHelperPrivate::StringTrim(s);
+                if (s.empty())
+                {
+                    throw std::runtime_error("rename key value map format error.");
+                }
+            }
+
+            mapReNames.insert({ tmp[0], tmp[1] });
+        }
+
+        return mapReNames;
+    }
+
+
     std::map<std::string, std::string> GetMembersValueMap(const std::string& valueStr)
     {
-        std::vector<std::string> array = StringSplit(valueStr);
+        std::vector<std::string> array = StringSplit(valueStr, ',');
         std::map<std::string, std::string> ret;
         for (int i = 0; i < array.size(); i++)
         {
@@ -489,7 +543,6 @@ public:
         // 基于arg的具体类型，调用相应的JsonToObject，实现具体参数的反序列化
         if (!JsonToObject(arg, *it))
         {
-            //m_message = "[" + names[index] + "] " + m_message;
             return false;
         }
         return true;
@@ -518,18 +571,7 @@ public:
     {
         json jv;
         // 基于arg的具体类型，调用相应的ObjectToJson，实现具体参数的序列化
-        bool check = ObjectToJson(arg, jv);
-        if (!check)
-        {
-            return false;
-        }
-
-        auto it = j.find(names[index]);
-        if (it != j.end())
-        {
-            auto next = it + 1;
-            j.erase(it, next);
-        }
+        if (!ObjectToJson(arg, jv)) return false;
 
         j[names[index]] = jv;
         return true;
@@ -586,8 +628,8 @@ public:
     template <typename TYPE>
     void StringToObject(TYPE &obj, const std::string &value)
     {
-        UN_USED(value);
-        UN_USED(obj);
+        CBIM_UNUSED(value);
+        CBIM_UNUSED(obj);
 
         return;
     }
